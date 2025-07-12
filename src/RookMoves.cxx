@@ -1,4 +1,6 @@
+#include "sys.h"
 #include "RookMoves.h"
+#include "debug.h"
 
 RookMoves::RookMoves(Board const& board)
 {

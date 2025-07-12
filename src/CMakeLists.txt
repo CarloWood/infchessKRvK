@@ -22,3 +22,7 @@ add_executable(infchess
   infchess.cxx
 )
 
+target_link_libraries(infchess
+  PRIVATE
+    ${AICXX_OBJECTS_LIST}
+)

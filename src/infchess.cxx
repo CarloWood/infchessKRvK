@@ -1,9 +1,11 @@
+#include "sys.h"
 #include "Board.h"
 #include "Data.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
 #include <map>
+#include "debug.h"
 
 struct DistanceCompare
 {
@@ -15,6 +17,8 @@ struct DistanceCompare
 
 int main()
 {
+  Debug(NAMESPACE_DEBUG::init());
+
   using namespace std::chrono_literals; // For ms.
 
 #if 0

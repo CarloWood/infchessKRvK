@@ -1,6 +1,8 @@
+#include "sys.h"
 #include "KingMoves.h"
 #include <iostream>
 #include <cassert>
+#include "debug.h"
 
 KingMoves::KingMoves(Board const& board, Color color)
 {

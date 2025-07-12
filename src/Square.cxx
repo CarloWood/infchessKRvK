@@ -1,7 +1,9 @@
+#include "sys.h"
 #include "Square.h"
 #include "Board.h"
 #include <iostream>
 #include <algorithm>
+#include "debug.h"
 
 bool Square::distance_less(Square const& rhs_pos) const
 {

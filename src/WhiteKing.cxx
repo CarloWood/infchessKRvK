@@ -1,3 +1,4 @@
+#include "sys.h"
 #include "WhiteKing.h"
 #include <iostream>
 

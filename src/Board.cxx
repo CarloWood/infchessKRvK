@@ -1,3 +1,4 @@
+#include "sys.h"
 #include "Board.h"
 #include "KingMoves.h"
 #include "RookMoves.h"
@@ -5,6 +6,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cassert>
+#include "debug.h"
 
 // Set this to true if your terminal has a dark background color.
 constexpr bool white_on_black_terminal = true;
