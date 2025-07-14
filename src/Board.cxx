@@ -96,24 +96,181 @@ void Board::utf8art(std::ostream& os) const
   }
 }
 
-void Board::canonicalize()
+void Board::canonicalize(bool mirror)
 {
-  if (!is_canonical())
+  DoutEntering(dc::notice, "Board::canonicalize(" << std::boolalpha << mirror << ")");
+
+  // A board can be 'canonical' (the black king has stored coordinates (n, m) where m <= n), or not.
+  // If the black king is on the main diagonal then print_flipped_ should be off after canonicalizing it.
+
+  // Possible cases:
+  // 1) The board is canonical with the black king not on the main diagonal and we do not want to mirror it.
+  //    Do nothing.
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ · ♔ · ♚       0 ┃ · ♔ · ♚
+  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
+  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     false             false
+  //
+  // or
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ·   · ♚       0 ┃ ·   · ♚
+  //     1 ┃ ♔ ·   ·  ==>  1 ┃ ♔ ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
+  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     true              true
+
+  // 2) The board is canonical with the black king not on the main diagonal and we do want to mirror it.
+  //    Toggle print_flipped_.
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ · ♔ · ♚       0 ┃ ·   ·
+  //     1 ┃   ·   ·  ==>  1 ┃ ♔ ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   ·
+  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     false             true
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ·   · ♚       0 ┃ · ♔ ·
+  //     1 ┃ ♔ ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   ·
+  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     true              false
+
+  // 3a) The black king is on the main diagonal and the flipped bit is off and we do not want to mirror it.
+  //     Do nothing.
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ♔   · ♚       0 ┃ ♔   · ♚
+  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
+  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     false             false
+
+  // 3b) The black king is on the main diagonal but the flipped bit is on and we do not want to mirror it.
+  //     Mirror wK_ and wR_ (and optionally bK_) and
+  //     set print_flipped_ to false (i.e. toggle it).
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ♔   · ♚       0 ┃ ♔   · ♚
+  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
+  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     true(?!)          false
+
+  // 4a) The black king is on the main diagonal and the flipped bit is off and we do want to mirror it.
+  //     Mirror wK_ and wR_ (and optionally bK_).
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ♔   · ♚       0 ┃ ♔   ·
+  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   ·
+  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     false             false
+
+  // 4b) The black king is on the main diagonal but the flipped bit is on and we do want to mirror it.
+  //     Set print_flipped_ to false (i.e. toggle it).
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ♔   · ♚       0 ┃ ♔   ·
+  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   ·
+  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     true(?!)          false
+
+  // 5) The board is not canonical and we do not want to mirror it.
+  //    Mirror wK_, wR_ and bK_ and
+  //    toggle print_flipped_.
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ·   · ♚       0 ┃ ·   · ♚
+  //     1 ┃ ♔ ·   ·  ==>  1 ┃ ♔ ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
+  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     false             true
+  //
+  // or
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ · ♔ · ♚       0 ┃ · ♔ · ♚
+  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
+  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     true              false
+
+  // 6) The board is not canonical and we do want to mirror it.
+  //    Mirror wK_, wR_ and bK_
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ ·   · ♚       0 ┃ · ♔ ·
+  //     1 ┃ ♔ ·   ·  ==>  1 ┃   ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   ·
+  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     false             false
+  //
+  // or
+  //
+  //       ┏━0━1━2━3         ┏━0━1━2━3
+  //     0 ┃ · ♔ · ♚       0 ┃ ·   ·
+  //     1 ┃   ·   ·  ==>  1 ┃ ♔ ·   ·
+  //     2 ┃ ·   · ♜       2 ┃ ·   ·
+  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     true              true
+
+  bool const canonical = is_canonical();
+  bool const bk_on_main_diagonal = bK_.is_on_main_diagonal();
+
+  // Thus print_flipped_ must be toggled in these cases:
+  bool do_flip =
+  // 2) The board is canonical with the black king not on the main diagonal and we do want to mirror it.
+    (!bk_on_main_diagonal && canonical && mirror) ||
+  // 3b+4b) The black king is on the main diagonal but the flipped bit is on.
+    (bk_on_main_diagonal && print_flipped_) ||
+  // 5) The board is not canonical and we do not want to mirror it.
+    (!canonical && !mirror);
+
+  // While mirroring must happen in these cases:
+  bool do_mirror =
+  // 3b+4a) The black king is on the main diagonal and print_flipped_ != mirror.
+    (bk_on_main_diagonal && print_flipped_ != mirror) ||
+  // 5+6) The board is not canonical.
+    !canonical;
+
+  if (do_mirror)
   {
-    // Flip the board so that it becomes canonical.
     bK_.mirror();
     wK_.mirror();
     wR_.mirror();
-    // However, make sure that the way it is printed doesn't change.
-    print_flipped_ = !print_flipped_;
-    Dout(dc::notice, "Board was not canonical. After mirroring: " << *this);
   }
+  if (do_flip)
+  {
+    print_flipped_ = !print_flipped_;
+  }
+#ifdef CWDEBUG
+  if (do_mirror || do_flip)
+    Dout(dc::notice, "Board was changed: " << *this);
+#endif
+
+  // The result must always be cannonical.
+  ASSERT(is_canonical());
+  // King did not move from or onto the main diagonal.
+  ASSERT(bk_on_main_diagonal == bK_.is_on_main_diagonal());
+  // If the king is on the main diagonal, then print_flipped_ should be off.
+  ASSERT(!bk_on_main_diagonal || !print_flipped_);
+#if CW_DEBUG
+  bool const position_was_mirrored = do_mirror != do_flip;
+  // The position was mirrored only if mirror is true.
+  ASSERT(mirror == position_was_mirrored);
+#endif
 }
 
 bool Board::distance_less(Board const& board) const
 {
   // Only compare boards that are cannonical.
-  assert(board.is_canonical());
+  ASSERT(board.is_canonical());
 
   // Note: we ignore the print_flipped_ boolean here!
   // This function is only used for ordering of a std::map,
@@ -245,10 +402,7 @@ std::vector<Board> Board::preceding_positions() const
     int index = 0;
     for (Square bk : KingMoves{*this, black})
     {
-      Board adjacent_board(bk, cwk, cwr, black);
-      // Make sure we print the board correctly, relative to the original.
-      if (print_flipped_)
-        adjacent_board.mirror();
+      Board adjacent_board(bk, cwk, cwr, black, print_flipped_);
       Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(adjacent_board, &Board::utf8art));
       {
 #ifdef CWDEBUG
@@ -260,9 +414,7 @@ std::vector<Board> Board::preceding_positions() const
         int index2 = 0;
         for (Square bk : KingMoves{adjacent_board, black})
         {
-          Board board(bk, cwk2, cwr2, white);
-          if (adjacent_board.print_flipped_)
-            board.mirror();
+          Board board(bk, cwk2, cwr2, white, adjacent_board.print_flipped_);
           Dout(dc::alternate, "alternate position (created from index " << index2 << "):" << utils::print_using(board, &Board::utf8art));
           ++index2;
         }
@@ -279,9 +431,7 @@ std::vector<Board> Board::preceding_positions() const
       int index = 0;
       for (Square wk : KingMoves{*this, white})
       {
-        result.emplace_back(cbk, wk, cwr, white);
-        if (print_flipped_)
-          result.back().mirror();
+        result.emplace_back(cbk, wk, cwr, white, print_flipped_);
         Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(result.back(), &Board::utf8art));
         ++index;
       }
@@ -290,9 +440,7 @@ std::vector<Board> Board::preceding_positions() const
     int index = 0;
     for (Square wr : RookMoves{*this})
     {
-      result.emplace_back(cbk, cwk, wr, white);
-      if (print_flipped_)
-        result.back().mirror();
+      result.emplace_back(cbk, cwk, wr, white, print_flipped_);
       Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(result.back(), &Board::utf8art));
       ++index;
     }

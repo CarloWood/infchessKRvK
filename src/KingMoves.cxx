@@ -14,7 +14,7 @@ KingMoves::KingMoves(Board const& board, Color color)
   DoutEntering(dc::notice, "KingMoves(board, " << color << ") for board:" << utils::print_using(board, &Board::utf8art));
 
   // The board must already be canonicalized.
-  assert(board.is_canonical());
+  ASSERT(board.is_canonical());
 
   // Get the current square of the king.
   Square const current_pos = color == black ? board.bK().pos() : board.wK().pos();
@@ -54,6 +54,16 @@ KingMoves::KingMoves(Board const& board, Color color)
         adjacent_board.set_black_king_square(adjacent_king_square);
       else
         adjacent_board.set_white_king_square(adjacent_king_square);
+
+      // As a special case, allow a position where the black king and the white rook are
+      // on the same square, with white to move. This just means that the black king just
+      // took the white rook.
+      if (color == black && adjacent_board.wR().pos() == adjacent_king_square)
+      {
+        Dout(dc::illegal, "Adding position where the black king just took the white rook on " << adjacent_king_square);
+        adjacent_squares_.push_back(adjacent_king_square);
+        continue;
+      }
 
       // Do not return positions that are illegal.
       if (adjacent_board.is_illegal())

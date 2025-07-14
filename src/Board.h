@@ -36,11 +36,12 @@ class Board
   Board() : bK_({0, 0}, black), wK_({2, 0}, white), wR_({1, 0}), to_play_{black} { }
 
   // Construct a board for a given position of the pieces.
-  Board(Square bk, Square wk, Square wr, Color to_play) : bK_(bk, black), wK_(wk, white), wR_(wr), to_play_(to_play)
+  Board(Square bk, Square wk, Square wr, Color to_play, bool mirror) : bK_(bk, black), wK_(wk, white), wR_(wr), to_play_(to_play)
   {
     DoutEntering(dc::notice, "Board(" << bk << ", " << wk << ", " << wr << ", " << to_play << ") [" << this << "]");
     Dout(dc::notice, "Board [" << this << "] is now: " << *this);
-    canonicalize();
+    // Canonicalize the board and optionally mirror the position.
+    canonicalize(mirror);
   }
 
   // Accessors.
@@ -92,5 +93,5 @@ class Board
 #endif
 
  private:
-  void canonicalize();
+  void canonicalize(bool mirror);
 };

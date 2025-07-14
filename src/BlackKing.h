@@ -32,6 +32,11 @@ class BlackKing
     return pos_.is_canonical();
   }
 
+  bool is_on_main_diagonal() const
+  {
+    return pos_.n == pos_.m;
+  }
+
   void mirror() { pos_.mirror(); }
 
   void print_on(std::ostream& os) const;

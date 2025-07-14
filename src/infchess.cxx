@@ -38,18 +38,19 @@ int main()
   // Generate all positions that are already mate.
   for (int wrc = 2; wrc < Board::horizontal_limit; ++wrc)
   {
-    positions.emplace_back(Square{0, 0}, Square{0, 2}, Square{wrc, 0}, black);
-    positions.emplace_back(Square{0, 0}, Square{1, 2}, Square{wrc, 0}, black);
-    positions.emplace_back(Square{0, 0}, Square{2, 0}, Square{0, wrc}, black);
-    positions.emplace_back(Square{0, 0}, Square{2, 1}, Square{0, wrc}, black);
+    for (int mirrored = 0; mirrored <= 1; ++mirrored)
+    {
+      positions.emplace_back(Square{0, 0}, Square{0, 2}, Square{wrc, 0}, black, mirrored);
+      positions.emplace_back(Square{0, 0}, Square{1, 2}, Square{wrc, 0}, black, mirrored);
+    }
   }
   for (int kn = 1; kn < Board::horizontal_limit; ++kn)
   {
     for (int wrn = 0; wrn < Board::horizontal_limit; ++wrn)
       if (std::abs(wrn  - kn) > 1)
       {
-        positions.emplace_back(Square{kn, 0}, Square{kn, 2}, Square{wrn, 0}, black);
-        positions.emplace_back(Square{0, kn}, Square{2, kn}, Square{0, wrn}, black);        // Flipped
+        for (int mirrored = 0; mirrored <= 1; ++mirrored)
+          positions.emplace_back(Square{kn, 0}, Square{kn, 2}, Square{wrn, 0}, black, mirrored);
       }
   }
 
