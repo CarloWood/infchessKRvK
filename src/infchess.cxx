@@ -1,6 +1,7 @@
 #include "sys.h"
 #include "Board.h"
 #include "Data.h"
+#include "utils/print_using.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
@@ -23,12 +24,11 @@ int main()
 
 #if 0
   Board current_position({0, 1}, {2, 1}, {3, 5}, white);
-  std::cout << "Current position:\n";
-  current_position.print();
+  Dout(dc::notice, "Current position:" << utils::print_using(current_position, &Board::utf8art));
 
   std::vector<Board> positions1 = current_position.preceding_positions();
   for (Board const& board : positions1)
-    board.print();
+    Dout(dc::notice, utils::print_using(board, &Board::utf8art));
 
   return 0;
 #endif
@@ -62,21 +62,17 @@ int main()
   for (auto const& value : data)
   {
     Board const& current_position(value.first);
-    std::cout << "Mate position:\n";
-    current_position.print();
+    Dout(dc::notice, "Mate position: " << utils::print_using(current_position, &Board::utf8art));
 
     positions = current_position.preceding_positions();
-
     for (Board const& board : positions)
     {
-      std::cout << "\nMate in one position:\n";
-      board.print();
+      Dout(dc::notice, "Mate in one position:" << utils::print_using(board, &Board::utf8art));
 
       std::vector<Board> positions2 = board.preceding_positions();
       for (Board const& board2 : positions2)
       {
-        std::cout << "\nMate in two ply position:\n";
-        board2.print();
+        Dout(dc::notice, "Mate in two ply position:" << utils::print_using(board2, &Board::utf8art));
       }
     }
   }

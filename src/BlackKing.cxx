@@ -2,8 +2,7 @@
 #include "BlackKing.h"
 #include <iostream>
 
-std::ostream& operator<<(std::ostream& os, BlackKing const& piece)
+void BlackKing::print_on(std::ostream& os) const
 {
-  os << "black king:" << piece.pos();
-  return os;
+  os << "black king:" << pos_;
 }

@@ -2,11 +2,16 @@
 #include "Board.h"
 #include "KingMoves.h"
 #include "RookMoves.h"
+#include "utils/print_using.h"
 #include <string_view>
 #include <iostream>
 #include <iomanip>
 #include <cassert>
 #include "debug.h"
+
+NAMESPACE_DEBUG_CHANNELS_START
+channel_ct alternate("ALTERNATE");
+NAMESPACE_DEBUG_CHANNELS_END
 
 // Set this to true if your terminal has a dark background color.
 constexpr bool white_on_black_terminal = true;
@@ -20,49 +25,55 @@ std::u8string_view const black_none = u8" ·";
 std::u8string_view const white_king = u8" ♔";
 std::u8string_view const white_rook = u8" ♖";
 std::u8string_view const white_none = u8"  ";
+std::u8string_view const corner     = u8" ┏";
+std::u8string_view const top_side   = u8"━";
+std::u8string_view const left_side  = u8" ┃";
 } // namespace
 
-// Custom overload for std::u8string_view.
-std::ostream& operator<<(std::ostream& os, std::u8string_view sv)
+// Write std::u8string_view to an ostream as-is.
+void raw_utf8(std::ostream& os, std::u8string_view const& sv)
 {
-  return os.write(reinterpret_cast<const char*>(sv.data()), sv.size());
+  os.write(reinterpret_cast<const char*>(sv.data()), sv.size());
 }
 
-void print_none(Color color)
+void print_none_to(std::ostream& os, Color color)
 {
-  std::cout << (color == Black ? black_none : white_none);
+  os << utils::print_using(color == Black ? black_none : white_none, &raw_utf8);
 }
 
-void print_king(Color color)
+void print_king_to(std::ostream& os, Color color)
 {
-  std::cout << (color == Black ? black_king : white_king);
+  os << utils::print_using(color == Black ? black_king : white_king, &raw_utf8);
 }
 
-void print_rook()
+void print_rook_to(std::ostream& os)
 {
-  std::cout << (white == Black ? black_rook : white_rook);
+  os << utils::print_using(white == Black ? black_rook : white_rook, &raw_utf8);
 }
 
-void Board::print() const
+void Board::utf8art(std::ostream& os) const
 {
-  std::cout << "    ";
-  for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+  if constexpr (Board::horizontal_limit_printing > 10)
   {
-    int tenth = n / 10;
-    std::cout << ' ';
-    if (tenth == 0)
-      std::cout << ' ';
-    else
-      std::cout << (tenth % 10);
+    os << "\n    ";
+    for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    {
+      int tenth = n / 10;
+      os << ' ';
+      if (tenth == 0)
+        os << ' ';
+      else
+        os << (tenth % 10);
+    }
   }
-  std::cout << this << "\n   ┏";
+  os << "\n  " << utils::print_using(corner, &raw_utf8);
   for (int n = 0; n < Board::horizontal_limit_printing; ++n)
-    std::cout << "━" << (n % 10);
-  std::cout << '\n';
+    os << utils::print_using(top_side, &raw_utf8) << (n % 10);
+  os << '\n';
   // Print top to bottom.
   for (int m = 0; m < Board::vertical_limit_printing; ++m)
   {
-    std::cout << std::setw(2) << std::setfill(' ') << std::right << (m % 100) << " ┃";
+    os << std::setw(2) << std::setfill(' ') << std::right << (m % 100) << utils::print_using(left_side, &raw_utf8);
     // Print left to right.
     for (int n = 0; n < Board::horizontal_limit_printing; ++n)
     {
@@ -71,17 +82,17 @@ void Board::print() const
         pos.mirror();
 
       if (bK_.pos() == pos)
-        print_king(black);
+        print_king_to(os, black);
       else if (wK_.pos() == pos)
-        print_king(white);
+        print_king_to(os, white);
       else if (wR_.pos() == pos)
-        print_rook();
+        print_rook_to(os);
       else
-        print_none((n + m) % 2 == 1 ? black : white);
+        print_none_to(os, (n + m) % 2 == 1 ? black : white);
     }
     if (m == 2)
-      std::cout << "     " << *this;
-    std::cout << "\n";
+      os << "     " << *this;
+    os << "\n";
   }
 }
 
@@ -95,8 +106,7 @@ void Board::canonicalize()
     wR_.mirror();
     // However, make sure that the way it is printed doesn't change.
     print_flipped_ = !print_flipped_;
-
-    std::cout << "Board was not canonical. After mirroring: " << *this << '\n';
+    Dout(dc::notice, "Board was not canonical. After mirroring: " << *this);
   }
 }
 
@@ -212,7 +222,7 @@ bool Board::is_illegal() const
 
 void Board::mirror()
 {
-  std::cout << "Entering Board::mirror() [" << this << "]\n";
+  DoutEntering(dc::notice, "Board::mirror() [" << this << "]");
   bK_.mirror();
   wK_.mirror();
   wR_.mirror();
@@ -220,9 +230,7 @@ void Board::mirror()
 
 std::vector<Board> Board::preceding_positions() const
 {
-  static int id = 0;
-  std::cout << "\n" << ++id << " ; Entering Board::preceding_positions for:\n";
-  print();
+  DoutEntering(dc::notice, "Board::preceding_positions for:" << *this);
 
   std::vector<Board> result;
 
@@ -231,36 +239,35 @@ std::vector<Board> Board::preceding_positions() const
   Square const cwr = wR_.pos();
   Square const cbk = bK_.pos();
 
-  std::cout << "cwk = " << cwk << "; cwr = " << cwr << "; cbk = " << cbk << '\n';
-
   if (to_play == black)
   {
     // Run over all possible (legal) preceding positions that the black king could have moved from.
     int index = 0;
     for (Square bk : KingMoves{*this, black})
     {
-      std::cout << "bk = " << bk << '\n';
       Board adjacent_board(bk, cwk, cwr, black);
-      std::cout << "\n" << ++id << " ; Adjacent board (created from index " << index << "):\n";
       // Make sure we print the board correctly, relative to the original.
       if (print_flipped_)
         adjacent_board.mirror();
-      adjacent_board.print();
-      std::cout << "\n" << ++id << " ; ---Potential alternate positions:\n";
-      Square const cwk2 = adjacent_board.wK().pos();
-      Square const cwr2 = adjacent_board.wR().pos();
-      int index2 = 0;
-      for (Square bk : KingMoves{adjacent_board, black})
+      Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(adjacent_board, &Board::utf8art));
       {
-        std::cout << "bk = " << bk << '\n';
-        Board board(bk, cwk2, cwr2, white);
-        if (adjacent_board.print_flipped_)
-          board.mirror();
-        std::cout << "\n" << ++id << " ; alternate position (created from index " << index2 << "):\n";
-        board.print();
-        ++index2;
+#ifdef CWDEBUG
+        Dout(dc::alternate, " .---Potential alternate positions:");
+        NAMESPACE_DEBUG::Mark __mark;
+#endif
+        Square const cwk2 = adjacent_board.wK().pos();
+        Square const cwr2 = adjacent_board.wR().pos();
+        int index2 = 0;
+        for (Square bk : KingMoves{adjacent_board, black})
+        {
+          Board board(bk, cwk2, cwr2, white);
+          if (adjacent_board.print_flipped_)
+            board.mirror();
+          Dout(dc::alternate, "alternate position (created from index " << index2 << "):" << utils::print_using(board, &Board::utf8art));
+          ++index2;
+        }
       }
-      std::cout << "---------------" << std::endl;
+      Dout(dc::alternate, " `---End of potential alternate positions.");
       result.push_back(adjacent_board);
       ++index;
     }
@@ -275,29 +282,28 @@ std::vector<Board> Board::preceding_positions() const
         result.emplace_back(cbk, wk, cwr, white);
         if (print_flipped_)
           result.back().mirror();
-        std::cout << "\n" << ++id << " ; Added (from index " << index << "):\n";
-        result.back().print();
+        Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(result.back(), &Board::utf8art));
         ++index;
       }
     }
     // Run over all possible (legal) preceding positions that the white rook could have moved from.
+    int index = 0;
     for (Square wr : RookMoves{*this})
     {
       result.emplace_back(cbk, cwk, wr, white);
       if (print_flipped_)
         result.back().mirror();
+      Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(result.back(), &Board::utf8art));
+      ++index;
     }
   }
 
   return result;
 }
 
-std::ostream& operator<<(std::ostream& os, Board const& board)
+#ifdef CWDEBUG
+void Board::print_on(std::ostream& os) const
 {
-  Board tmp_board(board);
-//  if (board.print_flipped_)
-//    tmp_board.mirror();
-  os << '{' << tmp_board.bK() << ", " << tmp_board.wK() << ", " << tmp_board.wR() <<
-    "," << (board.print_flipped_ ? " (flip)" : "") << " (" << tmp_board.to_play() << " to play)" << '}';
-  return os;
+  os << '{' << bK_ << ", " << wK_ << ", " << wR_ << "," << (print_flipped_ ? " (flip)" : "") << " (" << to_play_ << " to play)" << '}';
 }
+#endif

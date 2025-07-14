@@ -3,8 +3,15 @@
 #include "BlackKing.h"
 #include "WhiteKing.h"
 #include "Rook.h"
+#include "utils/has_print_on.h"
 #include <vector>
 #include <iostream>
+#include "debug.h"
+
+#ifdef CWDEBUG
+// This class defines a print_on method.
+using utils::has_print_on::operator<<;
+#endif
 
 class Board
 {
@@ -31,7 +38,8 @@ class Board
   // Construct a board for a given position of the pieces.
   Board(Square bk, Square wk, Square wr, Color to_play) : bK_(bk, black), wK_(wk, white), wR_(wr), to_play_(to_play)
   {
-    std::cout << "Constructing Board(" << bk << ", " << wk << ", " << wr << ", " << to_play << "); board is now: " << *this << " [" << this << "]\n";
+    DoutEntering(dc::notice, "Board(" << bk << ", " << wk << ", " << wr << ", " << to_play << ") [" << this << "]");
+    Dout(dc::notice, "Board [" << this << "] is now: " << *this);
     canonicalize();
   }
 
@@ -46,7 +54,7 @@ class Board
   bool is_canonical() const { return bK_.is_canonical(); }
 
   // Show the board.
-  void print() const;
+  void print_to(std::ostream& os) const;
 
   // Mirror the whole board in the n = m line.
   void mirror();
@@ -75,8 +83,13 @@ class Board
   // Generate all positions that can reach this position in one ply.
   std::vector<Board> preceding_positions() const;
 
+  // Show the board using UTF8 art.
+  void utf8art(std::ostream& os) const;
+
+#ifdef CWDEBUG
   // Allow printing a Board to an ostream.
-  friend std::ostream& operator<<(std::ostream& os, Board const& board);
+  void print_on(std::ostream& os) const;
+#endif
 
  private:
   void canonicalize();

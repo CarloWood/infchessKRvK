@@ -6,15 +6,15 @@
 class RookMoves
 {
  public:
-  using preceding_squares_type = std::vector<Square>;
-  using preceding_squares_iterator = preceding_squares_type::const_iterator;
+  using adjacent_squares_type = std::vector<Square>;
+  using adjacent_squares_iterator = adjacent_squares_type::const_iterator;
 
  private:
-  preceding_squares_type preceding_squares_;
+  adjacent_squares_type adjacent_squares_;
 
  public:
   RookMoves(Board const& board);
 
-  preceding_squares_iterator begin() { return preceding_squares_.begin(); }
-  preceding_squares_iterator end() { return preceding_squares_.end(); }
+  adjacent_squares_iterator begin() { return adjacent_squares_.begin(); }
+  adjacent_squares_iterator end() { return adjacent_squares_.end(); }
 };

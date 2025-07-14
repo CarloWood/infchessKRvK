@@ -2,7 +2,11 @@
 
 #include "Square.h"
 #include "Color.h"
+#include <utils/has_print_on.h>
 #include <iosfwd>
+
+// This class defines a print_on method.
+using utils::has_print_on::operator<<;
 
 class BlackKing
 {
@@ -29,6 +33,6 @@ class BlackKing
   }
 
   void mirror() { pos_.mirror(); }
-};
 
-std::ostream& operator<<(std::ostream& os, BlackKing const& piece);
+  void print_on(std::ostream& os) const;
+};

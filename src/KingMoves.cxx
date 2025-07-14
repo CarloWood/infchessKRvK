@@ -1,13 +1,17 @@
 #include "sys.h"
 #include "KingMoves.h"
+#include "utils/print_using.h"
 #include <iostream>
 #include <cassert>
 #include "debug.h"
 
+NAMESPACE_DEBUG_CHANNELS_START
+channel_ct illegal("ILLEGAL");
+NAMESPACE_DEBUG_CHANNELS_END
+
 KingMoves::KingMoves(Board const& board, Color color)
 {
-  std::cout << "Entering KingMoves(board, " << color << ") for board:\n";
-  board.print();
+  DoutEntering(dc::notice, "KingMoves(board, " << color << ") for board:" << utils::print_using(board, &Board::utf8art));
 
   // The board must already be canonicalized.
   assert(board.is_canonical());
@@ -55,14 +59,22 @@ KingMoves::KingMoves(Board const& board, Color color)
       if (adjacent_board.is_illegal())
         continue;
 
-      std::cout << "The following board is not illegal:\n";
-      adjacent_board.print();
+      Dout(dc::illegal, "The following board is not illegal:" << utils::print_using(adjacent_board, &Board::utf8art));
 
-      std::cout << "  (added to index " << adjacent_squares_.size() << ")\n";
+      Dout(dc::illegal, "  (added to index " << adjacent_squares_.size() << ")");
       // Note that adjacent_king_square might be NOT canonical!
       adjacent_squares_.push_back(adjacent_king_square);
     }
   }
 
-  std::cout << "Leaving KingMoves\n";
+#ifdef CWDEBUG
+  Dout(dc::notice|continued_cf, "Result: ");
+  char const* separator = "";
+  for (int i = 0; i < adjacent_squares_.size(); ++i)
+  {
+    Dout(dc::continued, separator << i << ": " << adjacent_squares_[i]);
+    separator = ", ";
+  }
+  Dout(dc::finish, ".");
+#endif
 }
