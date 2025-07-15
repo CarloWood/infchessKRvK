@@ -33,14 +33,16 @@ Graph::Graph()
       }
   }
 
-  // Store all positions that are already mate in our map.
-  data_.resize(1);
+  // Store all positions that are already mate in our map and the mate_in_ply_[0] vector.
+  mate_in_ply_.resize(1);
   for (Board const& board : mate_positions)
   {
-    auto ibp = data_[0].try_emplace(board, 0);
-    // We expect that none of the added Board's are flipped because
-    // we add the non-flipped one first.
+    auto ibp = nodes_.try_emplace(board, 0);
+    // We expect that none of the added Board's are flipped because we add the non-flipped one first.
     ASSERT(!ibp.first->first.print_flipped());
+    // Only store positions that were newly inserted in the vector.
+    if (ibp.second)
+      mate_in_ply_[0].push_back(ibp.first);
   }
 }
 
@@ -55,12 +57,15 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
   Square const cwr = current_board.wR().pos();
   Square const cbk = current_board.bK().pos();
   bool const cflipped = current_board.print_flipped();
-  // Get the latest positions that are already known to be mate in `ply` ply.
-  int const ply = data_.size() - 2;
-  // data_[ply + 1] is being generated.
-  ASSERT(ply >= 0);
-  map_type const& mate_in_ply_positions = data_[ply];
-  ASSERT(!mate_in_ply_positions.empty());
+  // The latest positions that are already known to be mate, are mate in k ply.
+  int const k = mate_in_ply_.size() - 2;
+#ifdef CWDEBUG
+  auto iter = nodes_.find(current_board);
+  // Only call preceding_positions for boards that are from nodes_.
+  ASSERT(iter != nodes_.end());
+  // mate_in_ply_[k + 1] is being generated, so current_board should be mate in k ply.
+  ASSERT(k == iter->second.ply_);
+#endif
 
   if (to_play == black)
   {
@@ -72,8 +77,41 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
       Dout(dc::adjacent, "Adjacent board (created from index " << index << "):");
       Debug(adjacent_board.debug_utf8art(dc::adjacent));
       bool valid = true;
-      // All adjacent positions should have higher ply.
-      ASSERT(mate_in_ply_positions.find(adjacent_board) == mate_in_ply_positions.end());
+      // All adjacent positions should have higher (or equal) ply.
+#ifdef CWDEBUG
+      auto iter = nodes_.find(adjacent_board);
+      // It is possible we already added the flipped version, which will be the same ply of course.
+      // In any position that is mate in k+1 ply the black king has more than one possible move
+      // (which is most positions) we will find that position back tracking from each of those
+      // possibilities. Therefore it is possible we found this position multiple times already.
+      //
+      // For example, the follow positions are all mate in 3 ply (white to play):
+      //
+      //   ┏━0━1━2━3━
+      // 0 ┃ ·   ♔      1. K(1,2) K(1,0) (only move)
+      // 1 ┃   ·   ·    2. R(3,0)#
+      // 2 ┃ ·   ♚ ♜
+      //
+      //   ┏━0━1━2━3━
+      // 0 ┃ ♔   ·      1. K(1,2) K(1,0) (only move)
+      // 1 ┃   ·   ·    2. R(3,0)#
+      // 2 ┃ ·   ♚ ♜
+      //
+      //   ┏━0━1━2━3━
+      // 0 ┃ ·   ·      1. K(2,1) K(0,0) (only move)
+      // 1 ┃ ♔ ·   ·    2. R(0,2)#
+      // 2 ┃ ·   ♚ ♜
+      //
+      // Therefore we find
+      //
+      //   ┏━0━1━2━3━
+      // 0 ┃ · ♔ ·      1. ... K(2,0) and mate in 3 ply
+      // 1 ┃   ·   ·    1. ... K(0,0) and mate in 3 ply
+      // 2 ┃ ·   ♚ ♜    1. ... K(0,1) and mate in 3 ply
+      //
+      // three times, as being a preceding position, once for each of the three first positions given.
+      ASSERT(iter == nodes_.end() || iter->second.ply_ == k + 1);
+#endif
       Dout(dc::alternate, " .---Potential alternate positions:");
       {
 #ifdef CWDEBUG
@@ -87,25 +125,10 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
           Board alternate_board(bk, cwk2, cwr2, white, adjacent_board.print_flipped());
           Dout(dc::alternate, "alternate position (created from index " << index2 << "):");
           Debug(alternate_board.debug_utf8art(dc::alternate));
-          if (mate_in_ply_positions.find(alternate_board) == mate_in_ply_positions.end())
+          // If this alternate move is unknown yet, then it will be a position in which it takes longer to mate black.
+          if (nodes_.find(alternate_board) == nodes_.end())
           {
             Dout(dc::alternate|dc::adjacent, "There is a better move for black K" << bk << "! Rejecting position " << adjacent_board << ".");
-#if 0
-            Dout(dc::notice, "Could not find:");
-            Debug(alternate_board.debug_utf8art(dc::notice));
-            Dout(dc::notice, "in the map:");
-            Dout(dc::notice, " .---Map contents for ply " << ply << ":");
-            {
-#ifdef CWDEBUG
-              NAMESPACE_DEBUG::Mark __mark;
-#endif
-              for (map_type::value_type const& value : mate_in_ply_positions)
-              {
-                Debug(value.first.debug_utf8art(dc::notice));
-              }
-            }
-            Dout(dc::notice, " `--End of map contents for ply " << ply << ".");
-#endif
             valid = false;
             break;
           }
@@ -155,22 +178,22 @@ void Graph::generate(int ply)
   ASSERT(ply > 0);
 
   // Generate the positions that are mate in ply - 1 first.
-  if (data_.size() < ply)
+  if (mate_in_ply_.size() < ply)
     generate(ply - 1);
 
   // ply should always be the last one.
-  ASSERT(ply == data_.size());
-  int const number_of_mate_in_ply_minus_one_positions = data_[ply - 1].size();
+  ASSERT(ply == mate_in_ply_.size());
+  int const number_of_mate_in_ply_minus_one_positions = mate_in_ply_[ply - 1].size();
 
   Dout(dc::notice, "There are " << number_of_mate_in_ply_minus_one_positions << " positions that are mate in " << (ply - 1) << " ply.");
 
-  // Store all positions that are mate in `ply` ply in a new map.
-  auto& new_map = data_.emplace_back();
+  // Store all positions that are mate in `ply` ply in a new positions_type.
+  positions_type& new_positions = mate_in_ply_.emplace_back();
 
   // Run over all positions that are mate in ply minus one.
-  for (auto const& value : data_[ply - 1])
+  for (nodes_type::const_iterator const& iter : mate_in_ply_[ply - 1])
   {
-    Board const& current_position(value.first);
+    Board const& current_position(iter->first);
     Dout(dc::notice, "Mate in " << (ply - 1) << " position:");
     Debug(current_position.debug_utf8art(dc::notice));
 
@@ -184,7 +207,9 @@ void Graph::generate(int ply)
 #endif
       for (Board const& board : preceding_boards)
       {
-        auto ibp = new_map.try_emplace(board, ply);
+        auto ibp = nodes_.try_emplace(board, ply);
+        if (ibp.second)
+          mate_in_ply_[ply].push_back(ibp.first);
         Dout(dc::preceding, "Predecing board:");
         Debug(ibp.first->first.debug_utf8art(dc::preceding));
       }

@@ -16,22 +16,24 @@ struct DistanceCompare
 class Graph
 {
  public:
-  using map_type = std::map<Board, Data, DistanceCompare>;
-  using data_type = std::vector<map_type>;                      // Stores a map as function of the ply in which a position is mate.
+  using nodes_type = std::map<Board, Data, DistanceCompare>;
+  using positions_type = std::vector<nodes_type::const_iterator>;       // Stores iterators to positions that are mate in a given number of ply.
+  using mate_in_ply_type = std::vector<positions_type>;                 // Store all boards that are mate in `ply` at index `ply`.
 
  private:
-  data_type data_;
+  nodes_type nodes_;
+  mate_in_ply_type mate_in_ply_;
 
  public:
   Graph();
 
   void generate(int ply);
 
-  map_type const& mate_in_ply(int ply) const
+  positions_type const& mate_in_ply(int ply) const
   {
     // Call generate(ply) first.
-    ASSERT(ply < data_.size());
-    return data_[ply];
+    ASSERT(ply < mate_in_ply_.size());
+    return mate_in_ply_[ply];
   }
 
  public:

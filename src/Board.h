@@ -47,7 +47,7 @@ class Board
 
   bool distance_less(Board const& board) const;
   bool is_illegal() const;
-  bool is_canonical() const { return bK_.is_canonical(); }
+  bool is_canonical() const;
 
   // Show the board.
   void print_to(std::ostream& os) const;

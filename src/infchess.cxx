@@ -15,18 +15,18 @@ int main()
   Graph graph;
 
   // Generate all positions that are mate in 1, 2, ..., `ply` ply.
-  int ply = 2;
-  Debug(libcwd::libcw_do.off());
+  int ply = 5;
+  //Debug(libcwd::libcw_do.off());
   graph.generate(ply);
-  Debug(libcwd::libcw_do.on());
+  //Debug(libcwd::libcw_do.on());
 
   Dout(dc::notice, " .--Mate in " << ply << " ply positions:");
   {
     NAMESPACE_DEBUG::Mark __mark;
-    auto const& mate_in_ply_positions = graph.mate_in_ply(ply);
-    for (Graph::map_type::value_type const& board : mate_in_ply_positions)
+    Graph::positions_type const& mate_in_ply_positions = graph.mate_in_ply(ply);
+    for (Graph::positions_type::value_type const& iter : mate_in_ply_positions)
     {
-      Debug(board.first.debug_utf8art(dc::notice));
+      Debug(iter->first.debug_utf8art(dc::notice));
     }
   }
   Dout(dc::notice, " `--End of mate in " << ply << " ply positions.");

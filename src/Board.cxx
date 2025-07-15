@@ -155,6 +155,11 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
 }
 #endif
 
+bool Board::is_canonical() const
+{
+  return bK_.is_canonical();
+}
+
 void Board::canonicalize(bool mirror)
 {
   DoutEntering(dc::board, "Board::canonicalize(" << std::boolalpha << mirror << ")");
@@ -447,6 +452,7 @@ void Board::mirror()
 #ifdef CWDEBUG
 void Board::print_on(std::ostream& os) const
 {
-  os << '{' << bK_ << ", " << wK_ << ", " << wR_ << "," << (print_flipped_ ? " (flip)" : "") << " (" << to_play_ << " to play)" << '}';
+  os << '{' << bK_ << ", " << wK_ << ", " << wR_ << ", " <<
+    to_play_ << " to play" << (print_flipped_ ? " (flip)" : "") << '}';
 }
 #endif
