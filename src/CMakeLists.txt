@@ -20,6 +20,7 @@ add_executable(infchess
   KingMoves.cxx
   RookMoves.cxx
   Graph.cxx
+  FEN.cxx
   infchess.cxx
 )
 

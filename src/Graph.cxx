@@ -19,8 +19,8 @@ Graph::Graph()
   {
     for (int mirrored = 0; mirrored <= 1; ++mirrored)
     {
-      mate_positions.emplace_back(Square{0, 0}, Square{0, 2}, Square{wrc, 0}, black, mirrored);
-      mate_positions.emplace_back(Square{0, 0}, Square{1, 2}, Square{wrc, 0}, black, mirrored);
+      mate_positions.emplace_back(Square{0, 0}, Square{2, 0}, Square{0, wrc}, black, mirrored);
+      mate_positions.emplace_back(Square{0, 0}, Square{2, 1}, Square{0, wrc}, black, mirrored);
     }
   }
   for (int kn = 1; kn < Board::horizontal_limit; ++kn)
@@ -74,8 +74,11 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
     for (Square bk : KingMoves{current_board, black})
     {
       Board adjacent_board(bk, cwk, cwr, black, cflipped);
-      Dout(dc::adjacent, "Adjacent board (created from index " << index << "):");
+      Dout(dc::adjacent, "Adjacent board (created from index " << index << ") - derived from " << current_board << ":");
       Debug(adjacent_board.debug_utf8art(dc::adjacent));
+      // black king:(0, 0), white king:(3, 1), rook:(5, 1), black to play
+      if (bk == Square{0, 0} && cwk == Square{3, 1} && cwr == Square{5, 1} && to_play == black)
+        Dout(dc::adjacent, "TEST CASE!");
       bool valid = true;
       // All adjacent positions should have higher (or equal) ply.
 #ifdef CWDEBUG
@@ -123,7 +126,7 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
         for (Square bk : KingMoves{adjacent_board, black})
         {
           Board alternate_board(bk, cwk2, cwr2, white, adjacent_board.print_flipped());
-          Dout(dc::alternate, "alternate position (created from index " << index2 << "):");
+          Dout(dc::alternate, "alternate position (created from index " << index2 << ") - derived from " << adjacent_board << ":");
           Debug(alternate_board.debug_utf8art(dc::alternate));
           // If this alternate move is unknown yet, then it will be a position in which it takes longer to mate black.
           if (nodes_.find(alternate_board) == nodes_.end())
@@ -139,7 +142,7 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
       if (valid)
       {
         result.push_back(adjacent_board);
-        Dout(dc::adjacent, "Added adjacent board (created from index " << index << "):");
+        Dout(dc::adjacent, "Added adjacent board (created from index " << index << ") - derived from " << current_board << " :");
         Debug(result.back().debug_utf8art(dc::adjacent));
         ++index;
       }
@@ -153,7 +156,7 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
       for (Square wk : KingMoves{current_board, white})
       {
         result.emplace_back(cbk, wk, cwr, white, cflipped);
-        Dout(dc::adjacent, "Added adjacent board (created from index " << index << "):");
+        Dout(dc::adjacent, "Added adjacent board (created from index " << index << ") - derived from " << current_board << " :");
         Debug(result.back().debug_utf8art(dc::adjacent));
         ++index;
       }
@@ -163,7 +166,7 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
     for (Square wr : RookMoves{current_board})
     {
       result.emplace_back(cbk, cwk, wr, white, cflipped);
-      Dout(dc::adjacent, "Added adjacent board (created from index " << index << "):");
+      Dout(dc::adjacent, "Added adjacent board (created from index " << index << ") - derived from " << current_board << " :");
       Debug(result.back().debug_utf8art(dc::adjacent));
       ++index;
     }
@@ -194,7 +197,7 @@ void Graph::generate(int ply)
   for (nodes_type::const_iterator const& iter : mate_in_ply_[ply - 1])
   {
     Board const& current_position(iter->first);
-    Dout(dc::notice, "Mate in " << (ply - 1) << " position:");
+    Dout(dc::notice, "Mate in " << (ply - 1) << " position (" << current_position << "):");
     Debug(current_position.debug_utf8art(dc::notice));
 
     std::vector<Board> preceding_boards = preceding_positions(current_position);

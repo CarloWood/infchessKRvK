@@ -22,6 +22,17 @@ class WhiteKing
     return pos_.distance_less(white_king.pos_);
   }
 
+  bool is_canonical() const
+  {
+    // The white king is in the upper-right triangle (including the main diagonal).
+    return pos_.is_canonical();
+  }
+
+  bool is_on_main_diagonal() const
+  {
+    return pos_.n == pos_.m;
+  }
+
   void mirror() { pos_.mirror(); }
 };
 

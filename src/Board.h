@@ -16,7 +16,7 @@ using utils::has_print_on::operator<<;
 class Board
 {
  public:
-  static constexpr int vertical_limit = 8;
+  static constexpr int vertical_limit = 16;
   static constexpr int vertical_limit_printing = vertical_limit;
   static constexpr int horizontal_limit = vertical_limit;
   static constexpr int horizontal_limit_printing = horizontal_limit;
@@ -51,6 +51,9 @@ class Board
 
   // Show the board.
   void print_to(std::ostream& os) const;
+
+  // Convert to FEN code (only works if horizontal_limit = vertical_limit = 8).
+  std::string to_fen() const;
 
   // Mirror the whole board in the n = m line.
   void mirror();

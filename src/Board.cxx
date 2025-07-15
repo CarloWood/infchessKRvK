@@ -109,6 +109,7 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
   if (!debug_channel.is_on())
     return;
 
+  Dout(debug_channel, *this << ":");
   if constexpr (Board::horizontal_limit_printing > 10)
   {
     Dout(debug_channel|continued_cf, "    ");
@@ -148,27 +149,36 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
       else
         print_none_to(oss, (n + m) % 2 == 1 ? black : white);
     }
-    if (m == 2)
-      oss << "     " << *this;
+//    if (m == 2)
+//      oss << "     " << *this;
     Dout(debug_channel, oss.str());
+  }
+  if constexpr (horizontal_limit == 8 && vertical_limit == 8)
+  {
+    Dout(debug_channel, to_fen());
   }
 }
 #endif
 
 bool Board::is_canonical() const
 {
-  return bK_.is_canonical();
+  return
+    (!bK_.is_on_main_diagonal() && bK_.is_canonical()) ||
+    ( bK_.is_on_main_diagonal() &&
+      ((!wK_.is_on_main_diagonal() && wK_.is_canonical()) ||
+       ( wK_.is_on_main_diagonal() && wR_.is_canonical())));
 }
 
 void Board::canonicalize(bool mirror)
 {
   DoutEntering(dc::board, "Board::canonicalize(" << std::boolalpha << mirror << ")");
 
-  // A board can be 'canonical' (the black king has stored coordinates (n, m) where m <= n), or not.
-  // If the black king is on the main diagonal then print_flipped_ should be off after canonicalizing it.
+  // A board can be 'canonical' (the black king has stored coordinates (n, m) where m <= n, or
+  // if the black king is on the main diagonal the same for the white king etc), or not.
+  // If all pieces are on the main diagonal then print_flipped_ should be off after canonicalizing it.
 
   // Possible cases:
-  // 1) The board is canonical with the black king not on the main diagonal and we do not want to mirror it.
+  // 1) The board is canonical with at least one piece not on the main diagonal and we do not want to mirror it.
   //    Do nothing.
   //
   //       ┏━0━1━2━3         ┏━0━1━2━3
@@ -187,7 +197,7 @@ void Board::canonicalize(bool mirror)
   //     3 ┃   ·   ·       3 ┃   ·   ·
   //     true              true
 
-  // 2) The board is canonical with the black king not on the main diagonal and we do want to mirror it.
+  // 2) The board is canonical with the at least one piece not on the main diagonal and we do want to mirror it.
   //    Toggle print_flipped_.
   //
   //       ┏━0━1━2━3         ┏━0━1━2━3
@@ -204,45 +214,44 @@ void Board::canonicalize(bool mirror)
   //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
   //     true              false
 
-  // 3a) The black king is on the main diagonal and the flipped bit is off and we do not want to mirror it.
+  // 3a) All pieces are on the main diagonal and the flipped bit is off and we do not want to mirror it.
   //     Do nothing.
   //
   //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   · ♚       0 ┃ ♔   · ♚
+  //     0 ┃ ♔   ·         0 ┃ ♔   ·
   //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
-  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     2 ┃ ·   ♚         2 ┃ ·   ♚
+  //     3 ┃   ·   ♜       3 ┃   ·   ♜
   //     false             false
 
-  // 3b) The black king is on the main diagonal but the flipped bit is on and we do not want to mirror it.
-  //     Mirror wK_ and wR_ (and optionally bK_) and
+  // 3b) All pieces are on the main diagonal but the flipped bit is on and we do not want to mirror it.
   //     set print_flipped_ to false (i.e. toggle it).
   //
   //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   · ♚       0 ┃ ♔   · ♚
+  //     0 ┃ ♔   ·         0 ┃ ♔   ·
   //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
-  //     3 ┃   ·   ·       3 ┃   ·   ·
+  //     2 ┃ ·   ♚         2 ┃ ·   ♚
+  //     3 ┃   ·   ♜       3 ┃   ·   ♜
   //     true(?!)          false
 
-  // 4a) The black king is on the main diagonal and the flipped bit is off and we do want to mirror it.
-  //     Mirror wK_ and wR_ (and optionally bK_).
+  // 4a) All pieces are onn the main diagonal and the flipped bit is off and we do want to mirror it.
+  //     Do nothing.
   //
   //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   · ♚       0 ┃ ♔   ·
+  //     0 ┃ ♔   ·         0 ┃ ♔   ·
   //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   ·
-  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     2 ┃ ·   ♚         2 ┃ ·   ♚
+  //     3 ┃   ·   ♜       3 ┃   ·   ♜
   //     false             false
 
-  // 4b) The black king is on the main diagonal but the flipped bit is on and we do want to mirror it.
+  // 4b) All pieces are the main diagonal but the flipped bit is on and we do want to mirror it.
   //     Set print_flipped_ to false (i.e. toggle it).
   //
   //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   · ♚       0 ┃ ♔   ·
+  //     0 ┃ ♔   ·         0 ┃ ♔   ·
   //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   ·
-  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
+  //     2 ┃ ·   ♚         2 ┃ ·   ♚
+  //     3 ┃   ·   ♜       3 ┃   ·   ♜
   //     true(?!)          false
 
   // 5) The board is not canonical and we do not want to mirror it.
@@ -285,21 +294,35 @@ void Board::canonicalize(bool mirror)
   //     true              true
 
   bool const canonical = is_canonical();
-  bool const bk_on_main_diagonal = bK_.is_on_main_diagonal();
+  bool const on_main_diagonal = bK_.is_on_main_diagonal() && wK_.is_on_main_diagonal() && wR_.is_on_main_diagonal();
+
+  // 2) The board is canonical with the at least one piece not on the main diagonal and we do want to mirror it.
+  //    Toggle print_flipped_.
+
+  // 3b) All pieces are on the main diagonal but the flipped bit is on and we do not want to mirror it.
+  //     set print_flipped_ to false (i.e. toggle it).
+
+  // 4b) All pieces are the main diagonal but the flipped bit is on and we do want to mirror it.
+  //     Set print_flipped_ to false (i.e. toggle it).
+  //
+  // 5) The board is not canonical and we do not want to mirror it.
+  //    Mirror wK_, wR_ and bK_ and
+  //    toggle print_flipped_.
+  //
+  // 6) The board is not canonical and we do want to mirror it.
+  //    Mirror wK_, wR_ and bK_
 
   // Thus print_flipped_ must be toggled in these cases:
   bool do_flip =
-  // 2) The board is canonical with the black king not on the main diagonal and we do want to mirror it.
-    (!bk_on_main_diagonal && canonical && mirror) ||
+  // 2) The board is canonical with the at least one piece not on the main diagonal and we do want to mirror it.
+    (!on_main_diagonal && canonical && mirror) ||
   // 3b+4b) The black king is on the main diagonal but the flipped bit is on.
-    (bk_on_main_diagonal && print_flipped_) ||
+    (on_main_diagonal && print_flipped_) ||
   // 5) The board is not canonical and we do not want to mirror it.
     (!canonical && !mirror);
 
   // While mirroring must happen in these cases:
   bool do_mirror =
-  // 3b+4a) The black king is on the main diagonal and print_flipped_ != mirror.
-    (bk_on_main_diagonal && print_flipped_ != mirror) ||
   // 5+6) The board is not canonical.
     !canonical;
 
@@ -321,13 +344,13 @@ void Board::canonicalize(bool mirror)
   // The result must always be cannonical.
   ASSERT(is_canonical());
   // King did not move from or onto the main diagonal.
-  ASSERT(bk_on_main_diagonal == bK_.is_on_main_diagonal());
-  // If the king is on the main diagonal, then print_flipped_ should be off.
-  ASSERT(!bk_on_main_diagonal || !print_flipped_);
+  ASSERT(on_main_diagonal == (bK_.is_on_main_diagonal() && wK_.is_on_main_diagonal() && wR_.is_on_main_diagonal()));
+  // If all pieces are on the main diagonal, then print_flipped_ should be off.
+  ASSERT(!on_main_diagonal || !print_flipped_);
 #if CW_DEBUG
   bool const position_was_mirrored = do_mirror != do_flip;
-  // The position was mirrored only if mirror is true.
-  ASSERT(mirror == position_was_mirrored);
+  // The position was mirrored only if mirror is true and not all pieces are on the main diagonal.
+  ASSERT((mirror && !on_main_diagonal) == position_was_mirrored);
 #endif
 }
 
@@ -354,8 +377,6 @@ bool Board::distance_less(Board const& board) const
   //   (black to move)     (white to move)
   //
   // means the board was flipped because the white pieces moved.
-  // Moreover, because the first position has the black king on the main diagonal,
-  // `print_flipped_` is guaranteed false, hence `print_flipped_` must be true for the second position.
   //
   // While,
   //
@@ -373,14 +394,14 @@ bool Board::distance_less(Board const& board) const
   // A link from the second position to itself also represents a single move:
   // the move where the black king crossed the main diagonal.
   //
-  // Note that every position (in the std::map) where the black king is
+  // Note that every position (in the std::map) where any piece is
   // not on the main diagonal represents two positions: with `print_flipped_`
   // true or false, so even if a link represents a single move, in fact it
   // still represents two moves (just from a different starting position).
   //
   // The only links that truely represent a single move is where
-  // the black king is on the main diagonal in the starting position
-  // and at least one of the white pieces is not.
+  // all pieces are on the main diagonal in both the starting position
+  // and the final position.
 
   if (bK_.distance_less(board.bK_))
     return true;
@@ -422,7 +443,7 @@ bool Board::is_illegal() const
     if (bk_pos.m == wr_pos.m)                   // Is the black king on the same row as the white rook?
     {
       // And the white king is not in the middle?
-      if (wk_pos.n != bk_pos.n)
+      if (wk_pos.m != bk_pos.m)
         return true;
       if (!(std::min(bk_pos.n, wr_pos.n) < wk_pos.n && wk_pos.n < std::max(bk_pos.n, wr_pos.n)))
         return true;
@@ -430,7 +451,7 @@ bool Board::is_illegal() const
     else if (bk_pos.n == wr_pos.n)              // Is the black king on the same file as the white rook?
     {
       // And the white king is not in the middle?
-      if (wk_pos.m != bk_pos.m)
+      if (wk_pos.n != bk_pos.n)
         return true;
       if (!(std::min(bk_pos.m, wr_pos.m) < wk_pos.m && wk_pos.m < std::max(bk_pos.m, wr_pos.m)))
         return true;
