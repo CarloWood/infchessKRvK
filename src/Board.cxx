@@ -1,16 +1,15 @@
 #include "sys.h"
 #include "Board.h"
-#include "KingMoves.h"
-#include "RookMoves.h"
 #include "utils/print_using.h"
 #include <string_view>
 #include <iostream>
 #include <iomanip>
 #include <cassert>
+#include <sstream>
 #include "debug.h"
 
 NAMESPACE_DEBUG_CHANNELS_START
-channel_ct alternate("ALTERNATE");
+channel_ct board("BOARD");
 NAMESPACE_DEBUG_CHANNELS_END
 
 // Set this to true if your terminal has a dark background color.
@@ -29,6 +28,14 @@ std::u8string_view const corner     = u8" ┏";
 std::u8string_view const top_side   = u8"━";
 std::u8string_view const left_side  = u8" ┃";
 } // namespace
+
+Board::Board(Square bk, Square wk, Square wr, Color to_play, bool mirror) : bK_(bk, black), wK_(wk, white), wR_(wr), to_play_(to_play)
+{
+  DoutEntering(dc::board, "Board(" << bk << ", " << wk << ", " << wr << ", " << to_play << ") [" << this << "]");
+  Dout(dc::board, "Board [" << this << "] is now: " << *this);
+  // Canonicalize the board and optionally mirror the position.
+  canonicalize(mirror);
+}
 
 // Write std::u8string_view to an ostream as-is.
 void raw_utf8(std::ostream& os, std::u8string_view const& sv)
@@ -96,9 +103,61 @@ void Board::utf8art(std::ostream& os) const
   }
 }
 
+#ifdef CWDEBUG
+void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
+{
+  if (!debug_channel.is_on())
+    return;
+
+  if constexpr (Board::horizontal_limit_printing > 10)
+  {
+    Dout(debug_channel|continued_cf, "    ");
+    for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    {
+      int tenth = n / 10;
+      Dout(dc::continued, ' ');
+      if (tenth == 0)
+        Dout(dc::continued, ' ');
+      else
+        Dout(dc::continued, (tenth % 10));
+    }
+    Dout(dc::finish, "");
+  }
+  Dout(debug_channel|continued_cf, "  " << utils::print_using(corner, &raw_utf8));
+  for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    Dout(dc::continued, utils::print_using(top_side, &raw_utf8) << (n % 10));
+  Dout(dc::finish, "");
+  // Print top to bottom.
+  for (int m = 0; m < Board::vertical_limit_printing; ++m)
+  {
+    std::ostringstream oss;
+    oss << std::setw(2) << std::setfill(' ') << std::right << (m % 100) << utils::print_using(left_side, &raw_utf8);
+    // Print left to right.
+    for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    {
+      Square pos{n, m};
+      if (print_flipped_)
+        pos.mirror();
+
+      if (bK_.pos() == pos)
+        print_king_to(oss, black);
+      else if (wK_.pos() == pos)
+        print_king_to(oss, white);
+      else if (wR_.pos() == pos)
+        print_rook_to(oss);
+      else
+        print_none_to(oss, (n + m) % 2 == 1 ? black : white);
+    }
+    if (m == 2)
+      oss << "     " << *this;
+    Dout(debug_channel, oss.str());
+  }
+}
+#endif
+
 void Board::canonicalize(bool mirror)
 {
-  DoutEntering(dc::notice, "Board::canonicalize(" << std::boolalpha << mirror << ")");
+  DoutEntering(dc::board, "Board::canonicalize(" << std::boolalpha << mirror << ")");
 
   // A board can be 'canonical' (the black king has stored coordinates (n, m) where m <= n), or not.
   // If the black king is on the main diagonal then print_flipped_ should be off after canonicalizing it.
@@ -251,7 +310,7 @@ void Board::canonicalize(bool mirror)
   }
 #ifdef CWDEBUG
   if (do_mirror || do_flip)
-    Dout(dc::notice, "Board was changed: " << *this);
+    Dout(dc::board, "Board was changed: " << *this);
 #endif
 
   // The result must always be cannonical.
@@ -379,74 +438,10 @@ bool Board::is_illegal() const
 
 void Board::mirror()
 {
-  DoutEntering(dc::notice, "Board::mirror() [" << this << "]");
+  DoutEntering(dc::board, "Board::mirror() [" << this << "]");
   bK_.mirror();
   wK_.mirror();
   wR_.mirror();
-}
-
-std::vector<Board> Board::preceding_positions() const
-{
-  DoutEntering(dc::notice, "Board::preceding_positions for:" << *this);
-
-  std::vector<Board> result;
-
-  Color to_play = to_play_.next();
-  Square const cwk = wK_.pos();    // The 'c' stands for Current (or Constant).
-  Square const cwr = wR_.pos();
-  Square const cbk = bK_.pos();
-
-  if (to_play == black)
-  {
-    // Run over all possible (legal) preceding positions that the black king could have moved from.
-    int index = 0;
-    for (Square bk : KingMoves{*this, black})
-    {
-      Board adjacent_board(bk, cwk, cwr, black, print_flipped_);
-      Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(adjacent_board, &Board::utf8art));
-      {
-#ifdef CWDEBUG
-        Dout(dc::alternate, " .---Potential alternate positions:");
-        NAMESPACE_DEBUG::Mark __mark;
-#endif
-        Square const cwk2 = adjacent_board.wK().pos();
-        Square const cwr2 = adjacent_board.wR().pos();
-        int index2 = 0;
-        for (Square bk : KingMoves{adjacent_board, black})
-        {
-          Board board(bk, cwk2, cwr2, white, adjacent_board.print_flipped_);
-          Dout(dc::alternate, "alternate position (created from index " << index2 << "):" << utils::print_using(board, &Board::utf8art));
-          ++index2;
-        }
-      }
-      Dout(dc::alternate, " `---End of potential alternate positions.");
-      result.push_back(adjacent_board);
-      ++index;
-    }
-  }
-  else
-  {
-    // Run over all possible (legal) preceding positions that the white king could have moved from.
-    {
-      int index = 0;
-      for (Square wk : KingMoves{*this, white})
-      {
-        result.emplace_back(cbk, wk, cwr, white, print_flipped_);
-        Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(result.back(), &Board::utf8art));
-        ++index;
-      }
-    }
-    // Run over all possible (legal) preceding positions that the white rook could have moved from.
-    int index = 0;
-    for (Square wr : RookMoves{*this})
-    {
-      result.emplace_back(cbk, cwk, wr, white, print_flipped_);
-      Dout(dc::notice, "Adjacent board (created from index " << index << "):" << utils::print_using(result.back(), &Board::utf8art));
-      ++index;
-    }
-  }
-
-  return result;
 }
 
 #ifdef CWDEBUG

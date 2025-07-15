@@ -36,19 +36,14 @@ class Board
   Board() : bK_({0, 0}, black), wK_({2, 0}, white), wR_({1, 0}), to_play_{black} { }
 
   // Construct a board for a given position of the pieces.
-  Board(Square bk, Square wk, Square wr, Color to_play, bool mirror) : bK_(bk, black), wK_(wk, white), wR_(wr), to_play_(to_play)
-  {
-    DoutEntering(dc::notice, "Board(" << bk << ", " << wk << ", " << wr << ", " << to_play << ") [" << this << "]");
-    Dout(dc::notice, "Board [" << this << "] is now: " << *this);
-    // Canonicalize the board and optionally mirror the position.
-    canonicalize(mirror);
-  }
+  Board(Square bk, Square wk, Square wr, Color to_play, bool mirror);
 
   // Accessors.
   BlackKing const& bK() const { return bK_; }
   WhiteKing const& wK() const { return wK_; }
   Rook const& wR() const { return wR_; }
   Color to_play() const { return to_play_; }
+  bool print_flipped() const { return print_flipped_; }
 
   bool distance_less(Board const& board) const;
   bool is_illegal() const;
@@ -81,15 +76,15 @@ class Board
     wR_.pos() = wr_pos;
   }
 
-  // Generate all positions that can reach this position in one ply.
-  std::vector<Board> preceding_positions() const;
-
   // Show the board using UTF8 art.
   void utf8art(std::ostream& os) const;
 
 #ifdef CWDEBUG
   // Allow printing a Board to an ostream.
   void print_on(std::ostream& os) const;
+
+  // Print the board as utf8art with Dout.
+  void debug_utf8art(libcwd::channel_ct const& debug_channel) const;
 #endif
 
  private:

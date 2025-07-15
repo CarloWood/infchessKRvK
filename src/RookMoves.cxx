@@ -1,11 +1,15 @@
 #include "sys.h"
 #include "RookMoves.h"
-#include "utils/print_using.h"
 #include "debug.h"
+
+NAMESPACE_DEBUG_CHANNELS_START
+channel_ct rookmoves("ROOKMOVES");
+NAMESPACE_DEBUG_CHANNELS_END
 
 RookMoves::RookMoves(Board const& board)
 {
-  DoutEntering(dc::notice, "RookMoves(board) for board:" << utils::print_using(board, &Board::utf8art));
+  DoutEntering(dc::rookmoves, "RookMoves(board) for board:");
+  Debug(board.debug_utf8art(dc::rookmoves));
 
   // Get the current square of the rook.
   Square const current_pos = board.wR().pos();
@@ -49,7 +53,7 @@ RookMoves::RookMoves(Board const& board)
     }
 
 #ifdef CWDEBUG
-  Dout(dc::notice|continued_cf, "Result: ");
+  Dout(dc::rookmoves|continued_cf, "Result: ");
   char const* separator = "";
   for (int i = 0; i < adjacent_squares_.size(); ++i)
   {
