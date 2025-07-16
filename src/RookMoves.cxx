@@ -19,6 +19,8 @@ RookMoves::RookMoves(Board const& board)
   int const cn = board.wR().pos().n;
   int const cm = board.wR().pos().m;
 
+  bool const only_canonical = board.bK().is_on_main_diagonal() && board.wK().is_on_main_diagonal() && board.wR().is_on_main_diagonal();
+
   // Fill adjacent_squares_ with the squares adjacent to the current rooks square
   // that are legal (and still inside the board) if the rook on it.
 
@@ -27,7 +29,7 @@ RookMoves::RookMoves(Board const& board)
     wkn = board.wK().pos().n;
 
   // Move rook left or right.
-  for (int dir = -1; dir <= 1; dir += 2)
+  for (int dir = only_canonical ? 1 : -1; dir <= 1; dir += 2)
     for (int n = cn + dir; n != wkn && 0 < n && n < Board::horizontal_limit; n += dir)
     {
       adjacent_board.set_white_rook_square({n, cm});
@@ -42,7 +44,7 @@ RookMoves::RookMoves(Board const& board)
     wkm = board.wK().pos().m;
 
   // Move the rook up or down:
-  for (int dir = -1; dir <= 1; dir += 2)
+  for (int dir = -1; dir <= (only_canonical ? -1 : 1); dir += 2)
     for (int m = cm + dir; m != wkm && 0 < m && m < Board::vertical_limit; m += dir)
     {
       adjacent_board.set_white_rook_square({cn, m});

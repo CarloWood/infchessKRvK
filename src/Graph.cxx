@@ -7,7 +7,7 @@
 NAMESPACE_DEBUG_CHANNELS_START
 channel_ct alternate("ALTERNATE");
 channel_ct adjacent("ADJACENT");
-channel_ct preceding("PRECEDING");
+channel_ct edge("EDGE");
 NAMESPACE_DEBUG_CHANNELS_END
 
 Graph::Graph()
@@ -46,9 +46,9 @@ Graph::Graph()
   }
 }
 
-std::vector<Board> Graph::preceding_positions(Board const& current_board)
+std::vector<Board> Graph::adjacent_positions(Board const& current_board)
 {
-  DoutEntering(dc::notice, "Graph::preceding_positions(" << current_board << ")");
+  DoutEntering(dc::notice, "Graph::adjacent_positions(" << current_board << ")");
 
   std::vector<Board> result;
 
@@ -61,24 +61,21 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
   int const k = mate_in_ply_.size() - 2;
 #ifdef CWDEBUG
   auto iter = nodes_.find(current_board);
-  // Only call preceding_positions for boards that are from nodes_.
+  // Only call adjacent_positions for boards that are from nodes_.
   ASSERT(iter != nodes_.end());
   // mate_in_ply_[k + 1] is being generated, so current_board should be mate in k ply.
-  ASSERT(k == iter->second.ply_);
+  ASSERT(k == iter->second.ply());
 #endif
 
   if (to_play == black)
   {
-    // Run over all possible (legal) preceding positions that the black king could have moved from.
+    // Run over all possible (legal) adjacent positions that the black king could have moved from.
     int index = 0;
     for (Square bk : KingMoves{current_board, black})
     {
       Board adjacent_board(bk, cwk, cwr, black, cflipped);
       Dout(dc::adjacent, "Adjacent board (created from index " << index << ") - derived from " << current_board << ":");
       Debug(adjacent_board.debug_utf8art(dc::adjacent));
-      // black king:(0, 0), white king:(3, 1), rook:(5, 1), black to play
-      if (bk == Square{0, 0} && cwk == Square{3, 1} && cwr == Square{5, 1} && to_play == black)
-        Dout(dc::adjacent, "TEST CASE!");
       bool valid = true;
       // All adjacent positions should have higher (or equal) ply.
 #ifdef CWDEBUG
@@ -112,10 +109,15 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
       // 1 ┃   ·   ·    1. ... K(0,0) and mate in 3 ply
       // 2 ┃ ·   ♚ ♜    1. ... K(0,1) and mate in 3 ply
       //
-      // three times, as being a preceding position, once for each of the three first positions given.
-      ASSERT(iter == nodes_.end() || iter->second.ply_ == k + 1);
+      // three times, as being a adjacent position, once for each of the three first positions given.
+      ASSERT(iter == nodes_.end() || iter->second.ply() == k + 1);
 #endif
       Dout(dc::alternate, " .---Potential alternate positions:");
+#ifdef CWDEBUG
+      bool debug_off = !DEBUGCHANNELS::dc::alternate.is_on();
+      if (debug_off)
+        libcwd::libcw_do.off();
+#endif
       {
 #ifdef CWDEBUG
         NAMESPACE_DEBUG::Mark __mark;
@@ -138,19 +140,21 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
           ++index2;
         }
       }
+      if (debug_off)
+        libcwd::libcw_do.on();
       Dout(dc::alternate, " `---End of potential alternate positions.");
       if (valid)
       {
         result.push_back(adjacent_board);
-        Dout(dc::adjacent, "Added adjacent board (created from index " << index << ") - derived from " << current_board << " :");
-        Debug(result.back().debug_utf8art(dc::adjacent));
+        Dout(dc::adjacent, "Added adjacent board (created from index " << index << ") - derived from " <<
+            current_board << " to index " << (result.size() - 1));
         ++index;
       }
     }
   }
   else
   {
-    // Run over all possible (legal) preceding positions that the white king could have moved from.
+    // Run over all possible (legal) adjacent positions that the white king could have moved from.
     {
       int index = 0;
       for (Square wk : KingMoves{current_board, white})
@@ -161,7 +165,7 @@ std::vector<Board> Graph::preceding_positions(Board const& current_board)
         ++index;
       }
     }
-    // Run over all possible (legal) preceding positions that the white rook could have moved from.
+    // Run over all possible (legal) adjacent positions that the white rook could have moved from.
     int index = 0;
     for (Square wr : RookMoves{current_board})
     {
@@ -200,23 +204,53 @@ void Graph::generate(int ply)
     Dout(dc::notice, "Mate in " << (ply - 1) << " position (" << current_position << "):");
     Debug(current_position.debug_utf8art(dc::notice));
 
-    std::vector<Board> preceding_boards = preceding_positions(current_position);
-    Dout(dc::notice, "Returned: " << preceding_boards.size() << " positions.");
+    std::vector<Board> adjacent_boards = adjacent_positions(current_position);
+    Dout(dc::notice, "Returned: " << adjacent_boards.size() << " positions.");
 
+    for (Board const& adjacent_position : adjacent_boards)
     {
-#ifdef CWDEBUG
-      Dout(dc::preceding, " .---Preceding positions:");
-      NAMESPACE_DEBUG::Mark __mark;
-#endif
-      for (Board const& board : preceding_boards)
+      auto ibp = nodes_.try_emplace(adjacent_position, ply);
+      bool need_edge = false;
+      if (ibp.second)
       {
-        auto ibp = nodes_.try_emplace(board, ply);
-        if (ibp.second)
-          mate_in_ply_[ply].push_back(ibp.first);
-        Dout(dc::preceding, "Predecing board:");
-        Debug(ibp.first->first.debug_utf8art(dc::preceding));
+        // If `adjacent_position` doesn't already exist in nodes_ then
+        // apparently one can't reach mate faster than in `ply` ply.
+        // Hence it must be mate in `ply` exactly since we can reach
+        // current_position from it, which is mate in `ply - 1` ply.
+        mate_in_ply_[ply].push_back(ibp.first);
+        need_edge = true;
+      }
+      else
+      {
+        // If `adjacent_position` already exists in the map, then it is possible
+        // that it was added because from `adjacent_position` we can reach a position,
+        // in one move, that is mate in `ply - 1` ply where that other position is not
+        // the current position.
+        //
+        // For example, assume B is the current position, ply = 3 and `adjacent_position` is D:
+        //
+        //          Q         (mate in one ply (white to move)).
+        //          |
+        //      A   B         (mate in two ply (black to move)).
+        //     / \ / \
+        //    C   D   E       (mate in three ply (white to move)).
+        //
+        // While A was the current position, we found adjacent positions C and D
+        // and added C and D to nodes_ as well as a link from C to A and from D to A.
+        //
+        // Now B is the current position, we find that D already exists in nodes_
+        // but still need to add the link from D to B.
+        //
+        // Note that we to check that D is indeed a position that is mate in `ply` ply,
+        // because from B we will also find adjacent positions that are mate in `ply - 2` ply (Q).
+        need_edge = ibp.first->second.ply() == ply;
+      }
+      if (need_edge)
+      {
+        auto current_position_iter = nodes_.find(current_position);
+        Dout(dc::edge, "Adding an edge from " << ibp.first->first << " to " << current_position << ".");
+        ibp.first->second.add_edge(current_position_iter);
       }
     }
-    Dout(dc::preceding, " `---End of preceding positions.");
   }
 }

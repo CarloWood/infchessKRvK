@@ -16,9 +16,9 @@ int main()
 
   // Generate all positions that are mate in 1, 2, ..., `ply` ply.
   int ply = 11;
-  Debug(libcwd::libcw_do.off());
+  //Debug(libcwd::libcw_do.off());
   graph.generate(ply);
-  Debug(libcwd::libcw_do.on());
+  //Debug(libcwd::libcw_do.on());
 
   Dout(dc::notice, " .--Mate in " << ply << " ply positions:");
   {

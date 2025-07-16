@@ -28,6 +28,8 @@ KingMoves::KingMoves(Board const& board, Color color)
   Board adjacent_board(board);
   adjacent_board.null_move();
 
+  bool const only_canonical = board.bK().is_on_main_diagonal() && board.wK().is_on_main_diagonal() && board.wR().is_on_main_diagonal();
+
   // Fill adjacent_squares_ with the squares adjacent to the current `color` kings square
   // that are legal (and still inside the board) if the king was on it.
   for (int dn = -1; dn <= 1; ++dn)
@@ -48,6 +50,9 @@ KingMoves::KingMoves(Board const& board, Color color)
         continue;
       // Don't generate positions where the king is beyond the vertical_limit.
       if (current_pos.m == Board::vertical_limit - 1 && dm == 1)
+        continue;
+      // Only generate canonical positions.
+      if (only_canonical && dn - dm < 0)
         continue;
 
       Square adjacent_king_square{current_pos.n + dn, current_pos.m + dm};
@@ -75,6 +80,7 @@ KingMoves::KingMoves(Board const& board, Color color)
 
       Dout(dc::illegal, "  (added to index " << adjacent_squares_.size() << ")");
       // Note that adjacent_king_square might be NOT canonical!
+      Dout(dc::kingmoves, "Adding position where the black king moved to " << adjacent_king_square);
       adjacent_squares_.push_back(adjacent_king_square);
     }
   }

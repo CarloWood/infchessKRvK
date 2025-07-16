@@ -11,16 +11,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(infchess
-  Color.cxx
   BlackKing.cxx
-  WhiteKing.cxx
-  Rook.cxx
   Board.cxx
-  Square.cxx
-  KingMoves.cxx
-  RookMoves.cxx
-  Graph.cxx
+  Color.cxx
+  Data.cxx
   FEN.cxx
+  Graph.cxx
+  KingMoves.cxx
+  Rook.cxx
+  RookMoves.cxx
+  Square.cxx
+  WhiteKing.cxx
   infchess.cxx
 )
 

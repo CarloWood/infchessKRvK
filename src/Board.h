@@ -93,3 +93,11 @@ class Board
  private:
   void canonicalize(bool mirror);
 };
+
+struct DistanceCompare
+{
+  bool operator()(Board const& lhs, Board const& rhs) const
+  {
+    return lhs.distance_less(rhs);
+  }
+};
