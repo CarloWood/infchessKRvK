@@ -25,7 +25,7 @@ class Square
   Square() = default;
   Square(int x, int y) : coordinates_{x, y} { }
 
-  static std::pair<int, int> default_coordinates()
+  static constexpr std::pair<int, int> default_coordinates()
   {
     using namespace coordinates;
     return {x, y};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Data.h"
+#include "Color.h"
 #include "debug.h"
 
 class Graph
@@ -11,11 +12,12 @@ class Graph
   using mate_in_ply_type = std::vector<positions_type>;                 // Store all boards that are mate in `ply` at index `ply`.
 
  private:
-  nodes_type nodes_;
+  nodes_type black_to_move_;
+  nodes_type white_to_move_;
   mate_in_ply_type mate_in_ply_;
 
  public:
-  Graph();
+  Graph(int board_size);
 
   void generate(int ply);
 
@@ -27,6 +29,6 @@ class Graph
   }
 
  public:
-  // Generate all positions that can reach position of board in one ply.
-  std::vector<Board> adjacent_positions(Board const& board);
+  // Generate all positions that `to_move` can reach the position of `board` in one ply.
+  std::vector<Board> adjacent_positions(Board const& board, Color to_move);
 };

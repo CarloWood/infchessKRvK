@@ -11,47 +11,47 @@ RookMoves::RookMoves(Board const& board)
   DoutEntering(dc::rookmoves, "RookMoves(board) for board:");
   Debug(board.debug_utf8art(dc::rookmoves));
 
-  // Get the current square of the rook.
-  Square const current_pos = board.wR().pos();
-  // Initialize the to-be-generated adjacent position with the final position with the other player to move.
-  Board adjacent_board(board.bK().pos(), board.wK().pos(), board.wR().pos(), board.to_play().opponent(), false);
+  int const board_size = board.board_size();
+  // Initialize the to-be-generated adjacent position with the final position.
+  // On this board it is white is to move.
+  Board adjacent_board(board_size, board.black_king(), board.white_king(), board.white_rook());
   // The current coordinates of the rook.
-  int const cn = board.wR().pos().n;
-  int const cm = board.wR().pos().m;
-
-  bool const only_canonical = board.bK().is_on_main_diagonal() && board.wK().is_on_main_diagonal() && board.wR().is_on_main_diagonal();
+  auto [xc, yc] = Square::default_coordinates();
+  int const cwrx = board.white_rook()[xc];
+  int const cwry = board.white_rook()[yc];
 
   // Fill adjacent_squares_ with the squares adjacent to the current rooks square
   // that are legal (and still inside the board) if the rook on it.
 
-  int wkn = -1;                         // Impossible value.
-  if (cm == board.wK().pos().m)         // Are the white king and white rook on the same row?
-    wkn = board.wK().pos().n;
+  // Current white king x-coordinate.
+  int cwkx = -1;                        // Impossible value.
+  if (cwry == board.white_king()[yc])   // Are the white king and white rook on the same row?
+    cwkx = board.white_king()[xc];
 
   // Move rook left or right.
-  for (int dir = only_canonical ? 1 : -1; dir <= 1; dir += 2)
-    for (int n = cn + dir; n != wkn && 0 < n && n < Board::horizontal_limit; n += dir)
+  for (int dir = -1; dir <= 1; dir += 2)
+    for (int wrx = cwrx + dir; wrx != cwkx && 0 < wrx && wrx < board_size; wrx += dir)
     {
-      adjacent_board.set_white_rook_square({n, cm});
+      adjacent_board.set_white_rook_square({wrx, cwry});
 
       // Do not return positions that are illegal.
-      if (!adjacent_board.is_illegal())
-        adjacent_squares_.push_back(adjacent_board.wR().pos());
+      if (adjacent_board.determine_legal(white))
+        adjacent_squares_.push_back(adjacent_board.white_rook());
     }
 
-  int wkm = -1;                         // Impossible value.
-  if (cn == board.wK().pos().n)         // Are the white king and white rook on the same file?
-    wkm = board.wK().pos().m;
+  int cwky = -1;                        // Impossible value.
+  if (cwrx == board.white_king()[xc])   // Are the white king and white rook on the same file?
+    cwky = board.white_king()[yc];
 
   // Move the rook up or down:
-  for (int dir = -1; dir <= (only_canonical ? -1 : 1); dir += 2)
-    for (int m = cm + dir; m != wkm && 0 < m && m < Board::vertical_limit; m += dir)
+  for (int dir = -1; dir <= 1; dir += 2)
+    for (int wry = cwry + dir; wry != cwky && 0 < wry && wry < board_size; wry += dir)
     {
-      adjacent_board.set_white_rook_square({cn, m});
+      adjacent_board.set_white_rook_square({cwrx, wry});
 
       // Do not return positions that are illegal.
-      if (!adjacent_board.is_illegal())
-        adjacent_squares_.push_back(adjacent_board.wR().pos());
+      if (adjacent_board.determine_legal(white))
+        adjacent_squares_.push_back(adjacent_board.white_rook());
     }
 
 #ifdef CWDEBUG

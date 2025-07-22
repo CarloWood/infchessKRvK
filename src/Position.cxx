@@ -5,32 +5,6 @@
 #include <iostream>
 #include "debug.h"
 
-// Written and tested by Carlo Wood - 2025/07/18.
-bool Position::determine_legal() const
-{
-  using namespace coordinates;
-
-  // Kings can't be next to eachother, or occupy the same square.
-  if (black_king_.is_next_to(white_king_))
-    return false;
-
-  // The white rook and white king can't occupy the same square.
-  if (white_rook_ == white_king_)
-    return false;
-
-  // If the white rook and the black king occupy the same square,
-  // black just took the rook if white is to play, otherwise the position is illegal.
-  if (white_rook_ == black_king_)
-    return to_move_ == white;           // Not illegal if white is to play.
-
-  // The remaining positions are all legal if it is black to play.
-  if (to_move_ == black)
-    return true;
-
-  // If it is white to play, then the position is illegal if black is in check.
-  return !determine_check();
-}
-
 // Implementation written and tested by Carlo Wood - 2025/07/19.
 Position::Mate Position::determine_mate() const
 {
@@ -153,7 +127,7 @@ std::vector<Position> Position::analyze_all(int board_size)
 
                 Position pos(board_size, black_king, white_king, white_rook, to_move);
 
-                if (pos.determine_legal())
+                if (pos.determine_legal(to_move))
                 {
                   pos.classify();
                   positions.push_back(pos);

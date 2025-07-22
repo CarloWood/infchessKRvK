@@ -53,7 +53,6 @@ private:
   static std::vector<Position> analyze_all(int board_size);
 
  private:
-  bool determine_legal() const;         // Uses determine_check.
   // These are only called for legal positions:
   Mate determine_mate() const;          // Uses black_has_moves and determine_check.
   bool determine_draw() const;          // Uses determine_mate.

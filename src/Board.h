@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Square.h"
+#include "Color.h"
 #include "utils/has_print_on.h"
 #include <functional>
 #include <tuple>
@@ -25,13 +26,6 @@ class Board
     return {black_king_, white_king_, white_rook_};
   }
 
-  enum class Figure {
-    none,
-    black_king,
-    white_king,
-    white_rook
-  };
-
  public:
   Board(int board_size, Square const& black_king, Square const& white_king, Square const& white_rook) :
     board_size_(board_size), black_king_(black_king), white_king_(white_king), white_rook_(white_rook) { }
@@ -43,6 +37,13 @@ class Board
   int board_size() const { return board_size_; }
 
   bool distance_less(Board const& board) const;
+
+  enum class Figure {
+    none,
+    black_king,
+    white_king,
+    white_rook
+  };
 
   static void utf8art(std::ostream& os, std::function<Figure (Square)> select_figure);
   void utf8art(std::ostream& os) const;
@@ -73,6 +74,9 @@ class Board
  protected:
   bool black_has_moves() const;
   bool determine_check() const;
+  friend class KingMoves;
+  friend class RookMoves;
+  bool determine_legal(Color to_move) const;    // Uses determine_check.
 
 #if CW_DEBUG
   // By default, assume black is to move (only used for an assert).
