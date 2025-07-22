@@ -52,7 +52,7 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board)
 
   std::vector<Board> result;
 
-  Color to_play = current_board.to_play().next();
+  Color to_play = current_board.to_play().opponent();
   Square const cwk = current_board.wK().pos();    // The 'c' stands for Current, Constant or Canonical - your pick.
   Square const cwr = current_board.wR().pos();
   Square const cbk = current_board.bK().pos();
@@ -125,9 +125,17 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board)
         Square const cwk2 = adjacent_board.wK().pos();
         Square const cwr2 = adjacent_board.wR().pos();
         int index2 = 0;
-        for (Square bk : KingMoves{adjacent_board, black})
+        // Generate normal (forward) moves.
+        for (Square bk : KingMoves{adjacent_board, black, true})
         {
           Board alternate_board(bk, cwk2, cwr2, white, adjacent_board.print_flipped());
+          if (bk.n == Board::horizontal_limit || bk.m == Board::vertical_limit)
+          {
+            Dout(dc::alternate|dc::adjacent, "Black can escape outside the board with K" << bk <<
+                "! Rejecting position " << adjacent_board << ".");
+            valid = false;
+            break;
+          }
           Dout(dc::alternate, "alternate position (created from index " << index2 << ") - derived from " << adjacent_board << ":");
           Debug(alternate_board.debug_utf8art(dc::alternate));
           // If this alternate move is unknown yet, then it will be a position in which it takes longer to mate black.

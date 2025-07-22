@@ -1,25 +1,19 @@
 #include "sys.h"
 #include "Square.h"
-#include "Board.h"
 #include <iostream>
-#include <algorithm>
-#include "debug.h"
 
-bool Square::distance_less(Square const& rhs_pos) const
+bool Square::distance_less(Square const& rhs_square) const
 {
-  int sum = n + m;
-  int other_sum = rhs_pos.n + rhs_pos.m;
+  using namespace coordinates;
 
-  if (sum < other_sum)
-    return true;
-  if (other_sum < sum)
-    return false;
+  int lhs_sum = coordinates_[x] + coordinates_[y];
+  int rhs_sum = rhs_square[x] + rhs_square[y];
 
-  // We ignore `print_flipped_`, see Board::distance_less.
-  return m < rhs_pos.m;
+  return (lhs_sum != rhs_sum) ? lhs_sum < rhs_sum : coordinates_[y] < rhs_square[y];
 }
 
-std::ostream& operator<<(std::ostream& os, Square pos)
+std::ostream& operator<<(std::ostream& os, Square const& square)
 {
-  return os << '(' << pos.n << ", " << pos.m << ')';
+  using namespace coordinates;
+  return os << '(' << square[x] << ", " << square[y] << ')';
 }

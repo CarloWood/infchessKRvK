@@ -14,7 +14,7 @@ RookMoves::RookMoves(Board const& board)
   // Get the current square of the rook.
   Square const current_pos = board.wR().pos();
   // Initialize the to-be-generated adjacent position with the final position with the other player to move.
-  Board adjacent_board(board.bK().pos(), board.wK().pos(), board.wR().pos(), board.to_play().next(), false);
+  Board adjacent_board(board.bK().pos(), board.wK().pos(), board.wR().pos(), board.to_play().opponent(), false);
   // The current coordinates of the rook.
   int const cn = board.wR().pos().n;
   int const cm = board.wR().pos().m;

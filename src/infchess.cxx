@@ -1,34 +1,41 @@
 #include "sys.h"
-#include "Board.h"
-#include "Graph.h"
-#include "utils/print_using.h"
-#include <chrono>
-#include <thread>
+#include "Position.h"
+#include <vector>
 #include <iostream>
+#include <cassert>
 #include "debug.h"
 
 int main()
 {
   Debug(NAMESPACE_DEBUG::init());
 
-  // Construct the initial graph with all positions that are already mate.
-  Graph graph;
+  constexpr int board_size = 5;
 
-  // Generate all positions that are mate in 1, 2, ..., `ply` ply.
-  int ply = 11;
-  //Debug(libcwd::libcw_do.off());
-  graph.generate(ply);
-  //Debug(libcwd::libcw_do.on());
+  int total_positions = 0;
+  int draw_positions = 0;
+  int black_in_check_positions = 0;
+  int mate_positions = 0;
+  int stalemate_positions = 0;
 
-  Dout(dc::notice, " .--Mate in " << ply << " ply positions:");
+  // Generate all possible positions
+  std::vector<Position> positions = Position::analyze_all(board_size);
+  total_positions = positions.size();
+
+  for (Position const& pos : positions)
   {
-    NAMESPACE_DEBUG::Mark __mark;
-    Graph::positions_type const& mate_in_ply_positions = graph.mate_in_ply(ply);
-    for (Graph::positions_type::value_type const& iter : mate_in_ply_positions)
-    {
-      Dout(dc::notice, "Final result for mate in " << ply << " (" << iter->first << ")");
-      Debug(iter->first.debug_utf8art(dc::notice));
-    }
+    if (pos.is_draw())
+      ++draw_positions;
+    if (pos.is_check())
+      ++black_in_check_positions;
+    if (pos.is_mate())
+      ++mate_positions;
+    if (pos.is_stalemate())
+      ++stalemate_positions;
   }
-  Dout(dc::notice, " `--End of mate in " << ply << " ply positions.");
+
+  std::cout << "Total legal positions: " << total_positions << std::endl;
+  std::cout << "Draw positions: " << draw_positions << std::endl;
+  std::cout << "Black in check positions: " << black_in_check_positions << std::endl;
+  std::cout << "Mate positions: " << mate_positions << std::endl;
+  std::cout << "Stalemate positions: " << stalemate_positions << std::endl;
 }

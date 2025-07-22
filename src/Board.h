@@ -1,11 +1,9 @@
 #pragma once
 
-#include "BlackKing.h"
-#include "WhiteKing.h"
-#include "Rook.h"
+#include "Square.h"
 #include "utils/has_print_on.h"
-#include <vector>
-#include <iostream>
+#include <functional>
+#include <tuple>
 #include "debug.h"
 
 #ifdef CWDEBUG
@@ -15,72 +13,54 @@ using utils::has_print_on::operator<<;
 
 class Board
 {
+ protected:
+  int const board_size_;
+  Square black_king_;
+  Square white_king_;
+  Square white_rook_;
+
+  // Use this as: auto [bk, wk, wr] = Board::abbreviations();
+  std::tuple<Square const&, Square const&, Square const&> abbreviations() const
+  {
+    return {black_king_, white_king_, white_rook_};
+  }
+
+  enum class Figure {
+    none,
+    black_king,
+    white_king,
+    white_rook
+  };
+
  public:
-  static constexpr int vertical_limit = 16;
-  static constexpr int vertical_limit_printing = vertical_limit;
-  static constexpr int horizontal_limit = vertical_limit;
-  static constexpr int horizontal_limit_printing = horizontal_limit;
-
- private:
-  BlackKing bK_;
-  WhiteKing wK_;
-  Rook wR_;
-  Color to_play_;
-
-  bool print_flipped_{false};   // True if the position mirrored in the n = m line should be shown when printing this position.
-
- public:
-  // Default constructor: the first legal position:
-  //   ┏━0━1━2━...
-  // 0 ┃ ♔ ♜ ♚
-  Board() : bK_({0, 0}, black), wK_({2, 0}, white), wR_({1, 0}), to_play_{black} { }
-
-  // Construct a board for a given position of the pieces.
-  Board(Square bk, Square wk, Square wr, Color to_play, bool mirror);
+  Board(int board_size, Square const& black_king, Square const& white_king, Square const& white_rook) :
+    board_size_(board_size), black_king_(black_king), white_king_(white_king), white_rook_(white_rook) { }
 
   // Accessors.
-  BlackKing const& bK() const { return bK_; }
-  WhiteKing const& wK() const { return wK_; }
-  Rook const& wR() const { return wR_; }
-  Color to_play() const { return to_play_; }
-  bool print_flipped() const { return print_flipped_; }
+  Square const& black_king() const { return black_king_; }
+  Square const& white_king() const { return white_king_; }
+  Square const& white_rook() const { return white_rook_; }
+  int board_size() const { return board_size_; }
 
   bool distance_less(Board const& board) const;
-  bool is_illegal() const;
-  bool is_canonical() const;
 
-  // Show the board.
-  void print_to(std::ostream& os) const;
-
-  // Convert to FEN code (only works if horizontal_limit = vertical_limit = 8).
-  std::string to_fen() const;
-
-  // Mirror the whole board in the n = m line.
-  void mirror();
-
-  // Toggle whose turn it is.
-  void null_move()
-  {
-    to_play_ = to_play_.next();
-  }
+  static void utf8art(std::ostream& os, std::function<Figure (Square)> select_figure);
+  void utf8art(std::ostream& os) const;
 
   void set_black_king_square(Square bk_pos)
   {
-    bK_.pos() = bk_pos;
+    black_king_ = bk_pos;
   }
 
   void set_white_king_square(Square wk_pos)
   {
-    wK_.pos() = wk_pos;
+    white_king_ = wk_pos;
   }
 
   void set_white_rook_square(Square wr_pos)
   {
-    wR_.pos() = wr_pos;
+    white_rook_ = wr_pos;
   }
-
-  // Show the board using UTF8 art.
-  void utf8art(std::ostream& os) const;
 
 #ifdef CWDEBUG
   // Allow printing a Board to an ostream.
@@ -90,8 +70,14 @@ class Board
   void debug_utf8art(libcwd::channel_ct const& debug_channel) const;
 #endif
 
- private:
-  void canonicalize(bool mirror);
+ protected:
+  bool black_has_moves() const;
+  bool determine_check() const;
+
+#if CW_DEBUG
+  // By default, assume black is to move (only used for an assert).
+  virtual bool black_is_to_move() const { return true; }
+#endif
 };
 
 struct DistanceCompare

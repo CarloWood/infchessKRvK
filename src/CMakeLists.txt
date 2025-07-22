@@ -11,18 +11,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(infchess
-  BlackKing.cxx
   Board.cxx
   Color.cxx
-  Data.cxx
   FEN.cxx
-  Graph.cxx
-  KingMoves.cxx
-  Rook.cxx
-  RookMoves.cxx
   Square.cxx
-  WhiteKing.cxx
-  infchess.cxx
+  Position.cxx
+  no_flip_infchess.cxx
 )
 
 target_link_libraries(infchess

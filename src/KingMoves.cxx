@@ -9,7 +9,7 @@ channel_ct illegal("ILLEGAL");
 channel_ct kingmoves("KINGMOVES");
 NAMESPACE_DEBUG_CHANNELS_END
 
-KingMoves::KingMoves(Board const& board, Color color)
+KingMoves::KingMoves(Board const& board, Color color, bool forward)
 {
   DoutEntering(dc::kingmoves, "KingMoves(board, " << color << ") for board:");
   Debug(board.debug_utf8art(dc::kingmoves));
@@ -37,8 +37,8 @@ KingMoves::KingMoves(Board const& board, Color color)
     // Don't generate positions where the king is outside the board.
     if (current_pos.n == 0 && dn == -1)
       continue;
-    // Don't generate positions where the king is beyond the horizontal_limit.
-    if (current_pos.n == Board::horizontal_limit - 1 && dn == 1)
+    // Don't generate positions where the king is beyond the horizontal_limit, unless we're generating forward moves.
+    if (!forward && current_pos.n == Board::horizontal_limit - 1 && dn == 1)
       continue;
     for (int dm = -1; dm <= 1; ++dm)
     {
@@ -48,8 +48,8 @@ KingMoves::KingMoves(Board const& board, Color color)
       // Don't generate positions where the king is outside the board.
       if (current_pos.m == 0 && dm == -1)
         continue;
-      // Don't generate positions where the king is beyond the vertical_limit.
-      if (current_pos.m == Board::vertical_limit - 1 && dm == 1)
+      // Don't generate positions where the king is beyond the vertical_limit, unless we're generating forward moves.
+      if (!forward && current_pos.m == Board::vertical_limit - 1 && dm == 1)
         continue;
       // Only generate canonical positions.
       if (only_canonical && dn - dm < 0)
@@ -63,8 +63,8 @@ KingMoves::KingMoves(Board const& board, Color color)
 
       // As a special case, allow a position where the black king and the white rook are
       // on the same square, with white to move. This just means that the black king just
-      // took the white rook.
-      if (color == black && adjacent_board.wR().pos() == adjacent_king_square)
+      // took the white rook. Only if the rook isn't protected by the white king of course.
+      if (color == black && adjacent_board.wR().pos() == adjacent_king_square && !adjacent_king_square.is_next_to(adjacent_board.wK().pos()))
       {
         Dout(dc::illegal, "Adding position where the black king just took the white rook on " << adjacent_king_square);
         adjacent_squares_.push_back(adjacent_king_square);

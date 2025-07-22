@@ -21,7 +21,7 @@ struct Color
     return *this;
   }
 
-  [[nodiscard]] Color next() const
+  [[nodiscard]] Color opponent() const
   {
     return {color_ == black ? white : black};
   }

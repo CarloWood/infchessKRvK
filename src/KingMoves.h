@@ -15,7 +15,7 @@ class KingMoves
   adjacent_squares_type adjacent_squares_;
 
  public:
-  KingMoves(Board const& board, Color color);
+  KingMoves(Board const& board, Color color, bool forward = false);
 
   adjacent_squares_iterator begin() { return adjacent_squares_.begin(); }
   adjacent_squares_iterator end() { return adjacent_squares_.end(); }

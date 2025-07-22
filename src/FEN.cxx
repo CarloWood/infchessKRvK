@@ -1,5 +1,5 @@
 #include "sys.h"
-#include "Board.h"
+#include "Position.h"
 
 #include <array>
 
@@ -24,11 +24,11 @@
  * @throws std::out_of_range If a piece is placed outside the 8x8 board.
  * @throws std::logic_error If two or more pieces occupy the same square.
  */
-std::string Board::to_fen() const
+std::string Position::to_fen() const
 {
-  Square const& black_king = bK_.pos();
-  Square const& white_king = wK_.pos();
-  Square const& white_rook = wR_.pos();
+  Square const& black_king = black_king_;
+  Square const& white_king = white_king_;
+  Square const& white_rook = white_rook_;
 
   // 1. Create an internal representation of the 8x8 board.
   // We initialize it with a character representing an empty square (' ').
@@ -39,10 +39,12 @@ std::string Board::to_fen() const
   // Helper lambda to place a piece on the board with validation.
   auto place_piece = [&](Square const& s, char piece_char)
   {
+    using namespace coordinates;
+
     // Validate coordinates are within the 8x8 board.
-    if (s.m < 0 || s.m >= 8 || s.n < 0 || s.n >= 8)
+    if (s[x] < 0 || s[x] >= 8 || s[y] < 0 || s[y] >= 8)
       throw std::out_of_range("Piece coordinates are outside the board.");
-    board[s.m][s.n] = piece_char;
+    board[s[y]][s[x]] = piece_char;
   };
 
   // 2. Place the three pieces on our board representation.
@@ -52,12 +54,12 @@ std::string Board::to_fen() const
 
   // 3. Build the piece-placement part of the FEN string.
   std::stringstream fen_stream;
-  for (int m = 0; m < 8; ++m)
+  for (int y = 0; y < 8; ++y)
   {
     int empty_square_count = 0;
-    for (int n = 0; n < 8; ++n)
+    for (int x = 0; x < 8; ++x)
     {
-      char piece = board[m][n];
+      char piece = board[y][x];
       if (piece == ' ')
         ++empty_square_count;
       else
@@ -75,13 +77,13 @@ std::string Board::to_fen() const
     if (empty_square_count > 0)
       fen_stream << empty_square_count;
     // Add the rank separator '/', except for the last rank.
-    if (m < 7)
+    if (y < 7)
       fen_stream << '/';
   }
 
   // 4. Append the other FEN fields with standard default values.
   // Format: [pieces] [active] [castling] [en passant] [halfmove] [fullmove]
-  fen_stream << " " << (to_play_ == white ? 'w' : 'b') << " - - 0 1";
+  fen_stream << " " << (to_move_ == white ? 'w' : 'b') << " - - 0 1";
 
   return fen_stream.str();
 }

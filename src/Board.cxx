@@ -1,16 +1,170 @@
 #include "sys.h"
 #include "Board.h"
+#include "Color.h"
 #include "utils/print_using.h"
+#include <utility>
+#include <cmath>
 #include <string_view>
 #include <iostream>
 #include <iomanip>
-#include <cassert>
-#include <sstream>
 #include "debug.h"
 
-NAMESPACE_DEBUG_CHANNELS_START
-channel_ct board("BOARD");
-NAMESPACE_DEBUG_CHANNELS_END
+// Implementation written and tested by Carlo Wood - 2025/07/19.
+bool Board::black_has_moves() const
+{
+  // This function assumes it is black to move.
+  // Therefore it should only be called when black is to move.
+  ASSERT(black_is_to_move());
+
+  // Set up coordinates for easy swapping.
+  auto [x, y] = Square::default_coordinates();
+  auto [bk, wk, wr] = Board::abbreviations();
+
+  // If the black king is to move but isn't mate or stalemate then black can move.
+  // It can only be mate or stalemate at the edge of the board.
+  if (bk[x] > 0 && bk[y] > 0)
+    return true;
+
+  // The black king is now against the edge.
+  //       ┏━0━1━2━3
+  //     0 ┃ ♔ ♔ ♔ ♔
+  //     1 ┃ ♔ ·   ·
+  //     2 ┃ ♔   ·
+  //     3 ┃ ♔ ·   ·
+
+  // To simply the code below, lets flip the position if the king is not against the left edge.
+  if (bk[x] != 0)
+    std::swap(x, y);
+
+  // The black king is now against the left edge.
+  //       ┏━0━1━2━3
+  //     0 ┃ ♔   ·
+  //     1 ┃ ♔ ·   ·
+  //     2 ┃ ♔   ·
+  //     3 ┃ ♔ ·   ·
+
+  if (bk[y] != 0)
+  {
+    // If the king is not in the corner, then it can't be stalemate.
+    // It can only be mate if the white king is opposite of the black king.
+    if (wk[x] != 2 || wk[y] != bk[y])
+      return true;
+
+    // The black king is now against the left edge, but not in the corner,
+    // and the white king is opposing it.
+    //       ┏━0━1━2━3        ┏━0━1━2━3        ┏━0━1━2━3
+    //     0 ┃ ·   ·        0 ┃ ·   ·        0 ┃ ·   ·
+    //     1 ┃ ♔ · ♚ ·  or  1 ┃   ·   ·  or  1 ┃   ·   ·
+    //     2 ┃ ·   ·        2 ┃ ♔   ♚        2 ┃ ·   ·
+    //     3 ┃   ·   ·      3 ┃   ·   ·      3 ┃ ♔ · ♚ ·
+
+    // Still, the black king can move unless it is mate.
+    // It can only be mate if the white rook is also against the left edge.
+    if (wr[x] != 0)
+      return true;
+
+    // Finally, it is mate unless the rook can be captured, or the king already captured the rook.
+    return std::abs(bk[y] - wr[y]) <= 1;
+  }
+
+  // The black king is now in the corner.
+  //       ┏━0━1━2━3
+  //     0 ┃ ♔   ·
+  //     1 ┃   ·   ·
+  //     2 ┃ ·   ·
+  //     3 ┃   ·   ·
+
+  // We don't really care about whether or not black is in check, we only
+  // need to know if (1, 0), (1, 1) and (0, 1) are attacked by white.
+  //
+  // Note that the rook can't be on (0, 0) too as it is black to move.
+
+  // If this is to be mate or stalemate then the white king must attack (1, 1).
+  // After all, the positions left that are mate or stalemate are one of:
+  //       ┏━0━1━2━3     ┏━0━1━2━3     ┏━0━1━2━3     ┏━0━1━2━3     ┏━0━1━2━3
+  //     0 ┃ ♔   ♚     0 ┃ ♔   ·     0 ┃ ♔   ·     0 ┃ ♔   ♜ ♜   0 ┃ ♔   ♜ ♜
+  //     1 ┃   ♜ ♜ ♜   1 ┃   ♜ ♚ ·   1 ┃   ♜   ·   1 ┃   ♜   ·   1 ┃   ♜   ·
+  //     2 ┃ ♜   ·     2 ┃ ♜   ·     2 ┃ ·   ♚     2 ┃ · ♚ ·     2 ┃ ♚ ♜ ·
+  //     3 ┃ ♜ ·   ·,  3 ┃ ♜ ·   ·,  3 ┃   ·   ·,  3 ┃   ·   ·,  3 ┃   ♜   ·
+
+  // Thus the king must be on (2, 0), (2, 1), (2, 2), (1, 2) or (0, 2).
+  if (wk[x] > 2 || wk[y] > 2)
+    return true;
+
+  // We assume this is a legal position (otherwise don't call this function).
+  // Therefore, the white king is now on:
+  //       ┏━0━1━2━3
+  //     0 ┃ ♔   ♚
+  //     1 ┃   · ♚ ·
+  //     2 ┃ ♚ ♚ ♚
+  //     3 ┃   ·   ·
+
+  // Therefore, it is always stalemate if the white rook is on (1, 1).
+  if (wr[x] == 1 && wr[y] == 1)
+    return false;
+
+  // The only positions left to check are now:
+  //   A:  ┏━0━1━2━3   B:  ┏━0━1━2━3   C:  ┏━0━1━2━3   D:  ┏━0━1━2━3
+  //     0 ┃ ♔   ♚       0 ┃ ♔   ·       0 ┃ ♔   ♜ ♜     0 ┃ ♔   ♜ ♜
+  //     1 ┃   · ♜ ♜     1 ┃   · ♚ ·     1 ┃   ·   ·     1 ┃   ·   ·
+  //     2 ┃ ♜   ·       2 ┃ ♜   ·       2 ┃ · ♚ ·       2 ┃ ♚ ♜ ·
+  //     3 ┃ ♜ ·   ·,    3 ┃ ♜ ·   ·,    3 ┃   ·   ·,    3 ┃   ♜   ·
+
+  if (wk[y] == 0)       // A
+    return !((wr[x] == 0 && wr[y] > 1) || (wr[x] > 0 && wr[y] == 1));
+  else if (wk[y] == 1)  // B
+    return !(wr[x] == 0 && wr[y] > 1);
+  else if (wk[x] == 1)  // C
+    return !(wr[x] > 1 && wr[y] == 0);
+  else if (wk[x] == 0)  // D
+    return !((wr[x] > 1 && wr[y] == 0) || (wr[x] == 1 && wr[y] > 0));
+
+  // None of those positions: the position is not mate or stalemate.
+  return true;
+}
+
+// Implementation written and tested by Carlo Wood - 2025/07/20.
+bool Board::determine_check() const
+{
+  // This function must also work for illegal positions where whites
+  // rook can capture the black king. It does not have to work for
+  // illegal positions where the two kings are next to each other:
+  //
+  // we check whether or not the white rook as a direct line of sight
+  // to the black king, without being concerned about whose turn it is.
+
+  // Set up coordinates for easy swapping.
+  auto [x, y] = Square::default_coordinates();
+  auto [bk, wk, wr] = Board::abbreviations();
+
+  // Determine if the rook is on the same file and/or row as the black king.
+  bool same_file = bk[x] == white_rook_[x];
+  bool same_row  = bk[y] == white_rook_[y];
+
+  // If the both are true, then the rook was captured and there is no check.
+  // If both are false, then the black king and white rook are not on one line
+  // and it also isn't check.
+  if (same_file == same_row)
+    return false;
+
+  // To simply the code below, lets flip the position if the king and rook are not on the same row.
+  if (!same_row)
+    std::swap(x, y);
+
+  // If the white king is not on the same row as the black king (and rook) then it isn't blocking the check.
+  if (wk[y] != bk[y])
+    return true;
+
+  int min_x = std::min(bk[x], wr[x]);
+  int max_x = std::max(bk[x], wr[x]);
+
+  // If the white king is between the black king and the white rook, it isn't check.
+  return !(min_x < wk[x] && wk[x] < max_x);
+}
+
+//=============================================================================
+// Printing a board.
+//
 
 // Set this to true if your terminal has a dark background color.
 constexpr bool white_on_black_terminal = true;
@@ -29,14 +183,6 @@ std::u8string_view const top_side   = u8"━";
 std::u8string_view const left_side  = u8" ┃";
 } // namespace
 
-Board::Board(Square bk, Square wk, Square wr, Color to_play, bool mirror) : bK_(bk, black), wK_(wk, white), wR_(wr), to_play_(to_play)
-{
-  DoutEntering(dc::board, "Board(" << bk << ", " << wk << ", " << wr << ", " << to_play << ") [" << this << "]");
-  Dout(dc::board, "Board [" << this << "] is now: " << *this);
-  // Canonicalize the board and optionally mirror the position.
-  canonicalize(mirror);
-}
-
 // Write std::u8string_view to an ostream as-is.
 void raw_utf8(std::ostream& os, std::u8string_view const& sv)
 {
@@ -45,27 +191,32 @@ void raw_utf8(std::ostream& os, std::u8string_view const& sv)
 
 void print_none_to(std::ostream& os, Color color)
 {
-  os << utils::print_using(color == Black ? black_none : white_none, &raw_utf8);
+  std::u8string_view const& sv = color == Black ? black_none : white_none;
+  os.write(reinterpret_cast<const char*>(sv.data()), sv.size());
 }
 
 void print_king_to(std::ostream& os, Color color)
 {
-  os << utils::print_using(color == Black ? black_king : white_king, &raw_utf8);
+  std::u8string_view const& sv = color == Black ? black_king : white_king;
+  os.write(reinterpret_cast<const char*>(sv.data()), sv.size());
 }
 
 void print_rook_to(std::ostream& os)
 {
-  os << utils::print_using(white == Black ? black_rook : white_rook, &raw_utf8);
+  std::u8string_view const& sv = white == Black ? black_rook : white_rook;
+  os.write(reinterpret_cast<const char*>(sv.data()), sv.size());
 }
 
-void Board::utf8art(std::ostream& os) const
+//static
+void Board::utf8art(std::ostream& os, std::function<Figure (Square)> select_figure)
 {
-  if constexpr (Board::horizontal_limit_printing > 10)
+  int board_size = 5;
+  if (board_size > 10)
   {
     os << "\n    ";
-    for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    for (int x = 0; x < board_size; ++x)
     {
-      int tenth = n / 10;
+      int tenth = x / 10;
       os << ' ';
       if (tenth == 0)
         os << ' ';
@@ -73,34 +224,62 @@ void Board::utf8art(std::ostream& os) const
         os << (tenth % 10);
     }
   }
-  os << "\n  " << utils::print_using(corner, &raw_utf8);
-  for (int n = 0; n < Board::horizontal_limit_printing; ++n)
-    os << utils::print_using(top_side, &raw_utf8) << (n % 10);
+  os << "\n  ";
+  os.write(reinterpret_cast<const char*>(corner.data()), corner.size());
+  for (int x = 0; x < board_size; ++x)
+  {
+    os.write(reinterpret_cast<const char*>(top_side.data()), top_side.size());
+    os << (x % 10);
+  }
   os << '\n';
   // Print top to bottom.
-  for (int m = 0; m < Board::vertical_limit_printing; ++m)
+  for (int y = 0; y < board_size; ++y)
   {
-    os << std::setw(2) << std::setfill(' ') << std::right << (m % 100) << utils::print_using(left_side, &raw_utf8);
+    os << std::setw(2) << std::setfill(' ') << std::right << (y % 100);
+    os.write(reinterpret_cast<const char*>(left_side.data()), left_side.size());
     // Print left to right.
-    for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    for (int x = 0; x < board_size; ++x)
     {
-      Square pos{n, m};
-      if (print_flipped_)
-        pos.mirror();
-
-      if (bK_.pos() == pos)
+      Figure figure = select_figure({x, y});
+      if (figure == Figure::black_king)
         print_king_to(os, black);
-      else if (wK_.pos() == pos)
+      else if (figure == Figure::white_king)
         print_king_to(os, white);
-      else if (wR_.pos() == pos)
+      else if (figure == Figure::white_rook)
         print_rook_to(os);
       else
-        print_none_to(os, (n + m) % 2 == 1 ? black : white);
+        print_none_to(os, (x + y) % 2 == 1 ? black : white);
     }
-    if (m == 2)
-      os << "     " << *this;
     os << "\n";
   }
+}
+
+void Board::utf8art(std::ostream& os) const
+{
+  Board::utf8art(os, [this](Square pos){
+    if (black_king_ == pos)
+      return Figure::black_king;
+    else if (white_king_ == pos)
+      return Figure::white_king;
+    else if (white_rook_ == pos)
+      return Figure::white_rook;
+    else
+      return Figure::none;
+  });
+}
+
+bool Board::distance_less(Board const& board) const
+{
+  // This function is only used for ordering of a std::map.
+  if (black_king_.distance_less(board.black_king_))
+    return true;
+  if (board.black_king_.distance_less(black_king_))
+    return false;
+  if (white_king_.distance_less(board.white_king_))
+    return true;
+  if (board.white_king_.distance_less(white_king_))
+    return false;
+  return white_rook_.distance_less(board.white_rook_);
 }
 
 #ifdef CWDEBUG
@@ -110,12 +289,12 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
     return;
 
   Dout(debug_channel, *this << ":");
-  if constexpr (Board::horizontal_limit_printing > 10)
+  if (board_size_ > 10)
   {
     Dout(debug_channel|continued_cf, "    ");
-    for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    for (int x = 0; x < board_size_; ++x)
     {
-      int tenth = n / 10;
+      int tenth = x / 10;
       Dout(dc::continued, ' ');
       if (tenth == 0)
         Dout(dc::continued, ' ');
@@ -125,355 +304,34 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
     Dout(dc::finish, "");
   }
   Dout(debug_channel|continued_cf, "  " << utils::print_using(corner, &raw_utf8));
-  for (int n = 0; n < Board::horizontal_limit_printing; ++n)
-    Dout(dc::continued, utils::print_using(top_side, &raw_utf8) << (n % 10));
+  for (int x = 0; x < board_size_; ++x)
+    Dout(dc::continued, utils::print_using(top_side, &raw_utf8) << (x % 10));
   Dout(dc::finish, "");
   // Print top to bottom.
-  for (int m = 0; m < Board::vertical_limit_printing; ++m)
+  for (int y = 0; y < board_size_; ++y)
   {
     std::ostringstream oss;
-    oss << std::setw(2) << std::setfill(' ') << std::right << (m % 100) << utils::print_using(left_side, &raw_utf8);
+    oss << std::setw(2) << std::setfill(' ') << std::right << (y % 100) << utils::print_using(left_side, &raw_utf8);
     // Print left to right.
-    for (int n = 0; n < Board::horizontal_limit_printing; ++n)
+    for (int x = 0; x < board_size_; ++x)
     {
-      Square pos{n, m};
-      if (print_flipped_)
-        pos.mirror();
+      Square pos{x, y};
 
-      if (bK_.pos() == pos)
+      if (black_king_ == pos)
         print_king_to(oss, black);
-      else if (wK_.pos() == pos)
+      else if (white_king_ == pos)
         print_king_to(oss, white);
-      else if (wR_.pos() == pos)
+      else if (white_rook_ == pos)
         print_rook_to(oss);
       else
-        print_none_to(oss, (n + m) % 2 == 1 ? black : white);
+        print_none_to(oss, (x + y) % 2 == 1 ? black : white);
     }
-//    if (m == 2)
-//      oss << "     " << *this;
     Dout(debug_channel, oss.str());
   }
-  if constexpr (horizontal_limit == 8 && vertical_limit == 8)
-  {
-    Dout(debug_channel, to_fen());
-  }
-}
-#endif
-
-bool Board::is_canonical() const
-{
-  return
-    (!bK_.is_on_main_diagonal() && bK_.is_canonical()) ||
-    ( bK_.is_on_main_diagonal() &&
-      ((!wK_.is_on_main_diagonal() && wK_.is_canonical()) ||
-       ( wK_.is_on_main_diagonal() && wR_.is_canonical())));
 }
 
-void Board::canonicalize(bool mirror)
-{
-  DoutEntering(dc::board, "Board::canonicalize(" << std::boolalpha << mirror << ")");
-
-  // A board can be 'canonical' (the black king has stored coordinates (n, m) where m <= n, or
-  // if the black king is on the main diagonal the same for the white king etc), or not.
-  // If all pieces are on the main diagonal then print_flipped_ should be off after canonicalizing it.
-
-  // Possible cases:
-  // 1) The board is canonical with at least one piece not on the main diagonal and we do not want to mirror it.
-  //    Do nothing.
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ · ♔ · ♚       0 ┃ · ♔ · ♚
-  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
-  //     3 ┃   ·   ·       3 ┃   ·   ·
-  //     false             false
-  //
-  // or
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ·   · ♚       0 ┃ ·   · ♚
-  //     1 ┃ ♔ ·   ·  ==>  1 ┃ ♔ ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
-  //     3 ┃   ·   ·       3 ┃   ·   ·
-  //     true              true
-
-  // 2) The board is canonical with the at least one piece not on the main diagonal and we do want to mirror it.
-  //    Toggle print_flipped_.
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ · ♔ · ♚       0 ┃ ·   ·
-  //     1 ┃   ·   ·  ==>  1 ┃ ♔ ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   ·
-  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
-  //     false             true
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ·   · ♚       0 ┃ · ♔ ·
-  //     1 ┃ ♔ ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   ·
-  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
-  //     true              false
-
-  // 3a) All pieces are on the main diagonal and the flipped bit is off and we do not want to mirror it.
-  //     Do nothing.
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   ·         0 ┃ ♔   ·
-  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   ♚         2 ┃ ·   ♚
-  //     3 ┃   ·   ♜       3 ┃   ·   ♜
-  //     false             false
-
-  // 3b) All pieces are on the main diagonal but the flipped bit is on and we do not want to mirror it.
-  //     set print_flipped_ to false (i.e. toggle it).
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   ·         0 ┃ ♔   ·
-  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   ♚         2 ┃ ·   ♚
-  //     3 ┃   ·   ♜       3 ┃   ·   ♜
-  //     true(?!)          false
-
-  // 4a) All pieces are onn the main diagonal and the flipped bit is off and we do want to mirror it.
-  //     Do nothing.
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   ·         0 ┃ ♔   ·
-  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   ♚         2 ┃ ·   ♚
-  //     3 ┃   ·   ♜       3 ┃   ·   ♜
-  //     false             false
-
-  // 4b) All pieces are the main diagonal but the flipped bit is on and we do want to mirror it.
-  //     Set print_flipped_ to false (i.e. toggle it).
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ♔   ·         0 ┃ ♔   ·
-  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   ♚         2 ┃ ·   ♚
-  //     3 ┃   ·   ♜       3 ┃   ·   ♜
-  //     true(?!)          false
-
-  // 5) The board is not canonical and we do not want to mirror it.
-  //    Mirror wK_, wR_ and bK_ and
-  //    toggle print_flipped_.
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ·   · ♚       0 ┃ ·   · ♚
-  //     1 ┃ ♔ ·   ·  ==>  1 ┃ ♔ ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
-  //     3 ┃   ·   ·       3 ┃   ·   ·
-  //     false             true
-  //
-  // or
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ · ♔ · ♚       0 ┃ · ♔ · ♚
-  //     1 ┃   ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   · ♜
-  //     3 ┃   ·   ·       3 ┃   ·   ·
-  //     true              false
-
-  // 6) The board is not canonical and we do want to mirror it.
-  //    Mirror wK_, wR_ and bK_
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ ·   · ♚       0 ┃ · ♔ ·
-  //     1 ┃ ♔ ·   ·  ==>  1 ┃   ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   ·
-  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
-  //     false             false
-  //
-  // or
-  //
-  //       ┏━0━1━2━3         ┏━0━1━2━3
-  //     0 ┃ · ♔ · ♚       0 ┃ ·   ·
-  //     1 ┃   ·   ·  ==>  1 ┃ ♔ ·   ·
-  //     2 ┃ ·   · ♜       2 ┃ ·   ·
-  //     3 ┃   ·   ·       3 ┃ ♚ · ♜ ·
-  //     true              true
-
-  bool const canonical = is_canonical();
-  bool const on_main_diagonal = bK_.is_on_main_diagonal() && wK_.is_on_main_diagonal() && wR_.is_on_main_diagonal();
-
-  // 2) The board is canonical with the at least one piece not on the main diagonal and we do want to mirror it.
-  //    Toggle print_flipped_.
-
-  // 3b) All pieces are on the main diagonal but the flipped bit is on and we do not want to mirror it.
-  //     set print_flipped_ to false (i.e. toggle it).
-
-  // 4b) All pieces are the main diagonal but the flipped bit is on and we do want to mirror it.
-  //     Set print_flipped_ to false (i.e. toggle it).
-  //
-  // 5) The board is not canonical and we do not want to mirror it.
-  //    Mirror wK_, wR_ and bK_ and
-  //    toggle print_flipped_.
-  //
-  // 6) The board is not canonical and we do want to mirror it.
-  //    Mirror wK_, wR_ and bK_
-
-  // Thus print_flipped_ must be toggled in these cases:
-  bool do_flip =
-  // 2) The board is canonical with the at least one piece not on the main diagonal and we do want to mirror it.
-    (!on_main_diagonal && canonical && mirror) ||
-  // 3b+4b) The black king is on the main diagonal but the flipped bit is on.
-    (on_main_diagonal && print_flipped_) ||
-  // 5) The board is not canonical and we do not want to mirror it.
-    (!canonical && !mirror);
-
-  // While mirroring must happen in these cases:
-  bool do_mirror =
-  // 5+6) The board is not canonical.
-    !canonical;
-
-  if (do_mirror)
-  {
-    bK_.mirror();
-    wK_.mirror();
-    wR_.mirror();
-  }
-  if (do_flip)
-  {
-    print_flipped_ = !print_flipped_;
-  }
-#ifdef CWDEBUG
-  if (do_mirror || do_flip)
-    Dout(dc::board, "Board was changed: " << *this);
-#endif
-
-  // The result must always be cannonical.
-  ASSERT(is_canonical());
-  // King did not move from or onto the main diagonal.
-  ASSERT(on_main_diagonal == (bK_.is_on_main_diagonal() && wK_.is_on_main_diagonal() && wR_.is_on_main_diagonal()));
-  // If all pieces are on the main diagonal, then print_flipped_ should be off.
-  ASSERT(!on_main_diagonal || !print_flipped_);
-#if CW_DEBUG
-  bool const position_was_mirrored = do_mirror != do_flip;
-  // The position was mirrored only if mirror is true and not all pieces are on the main diagonal.
-  ASSERT((mirror && !on_main_diagonal) == position_was_mirrored);
-#endif
-}
-
-bool Board::distance_less(Board const& board) const
-{
-  // Only compare boards that are cannonical.
-  ASSERT(board.is_canonical());
-
-  // Note: we ignore the print_flipped_ boolean here!
-  // This function is only used for ordering of a std::map,
-  // and though we have links between elements of that map,
-  // representing a move, it is possible to figure out what
-  // that move was by reconstructing legal moves from all
-  // possible flipped positions.
-  //
-  // For example,
-  //
-  //   ┏━0━1━2━3━4━        ┏━0━1━2━3━4━
-  // 0 ┃ ♔   ·   ·       0 ┃ · ♔ ·   ·
-  // 1 ┃   ·   ♚         1 ┃   ·   ·
-  // 2 ┃ ·   · ♜ ·   ==> 2 ┃ ·   ·   ·
-  // 3 ┃   ·   ·         3 ┃   ♚ ♜ ·
-  // 4 ┃ ·   ·   ·       4 ┃ ·   ·   ·
-  //   (black to move)     (white to move)
-  //
-  // means the board was flipped because the white pieces moved.
-  //
-  // While,
-  //
-  //   ┏━0━1━2━3━4━        ┏━0━1━2━3━4━
-  // 0 ┃ ♔   ·   ·       0 ┃ · ♔ ·   ·
-  // 1 ┃   ·   ·         1 ┃   ·   ·
-  // 2 ┃ ·   ♚   ·   ==> 2 ┃ ·   ♚   ·
-  // 3 ┃   ·   ♜         3 ┃   ·   ♜
-  // 4 ┃ ·   ·   ·       4 ┃ ·   ·   ·
-  //   (black to move)     (white to move)
-  //
-  // represents two possible moves at the same time: here it is possible
-  // that second position has `print_flipped_` true or false.
-  //
-  // A link from the second position to itself also represents a single move:
-  // the move where the black king crossed the main diagonal.
-  //
-  // Note that every position (in the std::map) where any piece is
-  // not on the main diagonal represents two positions: with `print_flipped_`
-  // true or false, so even if a link represents a single move, in fact it
-  // still represents two moves (just from a different starting position).
-  //
-  // The only links that truely represent a single move is where
-  // all pieces are on the main diagonal in both the starting position
-  // and the final position.
-
-  if (bK_.distance_less(board.bK_))
-    return true;
-  if (board.bK_.distance_less(bK_))
-    return false;
-  if (wK_.distance_less(board.wK_))
-    return true;
-  if (board.wK_.distance_less(wK_))
-    return false;
-  if (to_play_ != board.to_play_)
-    return to_play_ == black;
-  return wR_.distance_less(board.wR_);
-}
-
-bool Board::is_illegal() const
-{
-  // Test if the position is illegal; one or more of:
-  //
-  // 1) The kings are next to eachother or on the same square.
-
-  Square const& bk_pos = bK_.pos();
-  Square const& wk_pos = wK_.pos();
-  int dx = std::abs(bk_pos.n - wk_pos.n);
-  int dy = std::abs(bk_pos.m - wk_pos.m);
-  if (dx <= 1 && dy <= 1)
-    return true;
-
-  // 2) One of the kings is on the same square as the rook.
-
-  Square const& wr_pos = wR_.pos();
-  if (wr_pos == bk_pos || wr_pos == wk_pos)
-    return true;
-
-  // 3) White is to move and the black king and white rook are on the same row,
-  //    and the white king is not in between them.
-
-  if (to_play_ == white)                        // Is white to move?
-  {
-    if (bk_pos.m == wr_pos.m)                   // Is the black king on the same row as the white rook?
-    {
-      // And the white king is not in the middle?
-      if (wk_pos.m != bk_pos.m)
-        return true;
-      if (!(std::min(bk_pos.n, wr_pos.n) < wk_pos.n && wk_pos.n < std::max(bk_pos.n, wr_pos.n)))
-        return true;
-    }
-    else if (bk_pos.n == wr_pos.n)              // Is the black king on the same file as the white rook?
-    {
-      // And the white king is not in the middle?
-      if (wk_pos.n != bk_pos.n)
-        return true;
-      if (!(std::min(bk_pos.m, wr_pos.m) < wk_pos.m && wk_pos.m < std::max(bk_pos.m, wr_pos.m)))
-        return true;
-    }
-  }
-
-  // Legal position.
-  return false;
-}
-
-void Board::mirror()
-{
-  DoutEntering(dc::board, "Board::mirror() [" << this << "]");
-  bK_.mirror();
-  wK_.mirror();
-  wR_.mirror();
-}
-
-#ifdef CWDEBUG
 void Board::print_on(std::ostream& os) const
 {
-  os << '{' << bK_ << ", " << wK_ << ", " << wR_ << ", " <<
-    to_play_ << " to play" << (print_flipped_ ? " (flip)" : "") << '}';
+  os << "{black king:" << black_king_ << ", white king:" << white_king_ << ", white rook:" << white_rook_ << '}';
 }
 #endif
