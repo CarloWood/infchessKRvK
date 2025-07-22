@@ -16,7 +16,7 @@ add_executable(infchess
   FEN.cxx
   Square.cxx
   Position.cxx
-  no_flip_infchess.cxx
+  infchess.cxx
 )
 
 target_link_libraries(infchess

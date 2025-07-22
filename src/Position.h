@@ -35,11 +35,10 @@ public:
 private:
   Color to_move_;
   std::uint8_t classification_;
-  int mate_in_moves_;
 
  public:
   Position(int board_size, Square const& black_king, Square const& white_king, Square const& white_rook, Color to_move) :
-    Board(board_size, black_king, white_king, white_rook), to_move_(to_move), classification_{}, mate_in_moves_{-1} { }
+    Board(board_size, black_king, white_king, white_rook), to_move_(to_move), classification_{} { }
 
  public:
   // Accessors.
@@ -49,7 +48,6 @@ private:
   bool is_stalemate() const { return (classification_ & Classification::stalemate); }
   bool is_draw() const { return (classification_ & Classification::draw); }
   bool is_check() const { return (classification_ & Classification::check); }
-  int mate_in_moves() const { return mate_in_moves_; }
 
   // Returns all possible legal positions, already classified.
   static std::vector<Position> analyze_all(int board_size);
