@@ -2,9 +2,11 @@
 #include "RookMoves.h"
 #include "debug.h"
 
+#ifdef CWDEBUG
 NAMESPACE_DEBUG_CHANNELS_START
 channel_ct rookmoves("ROOKMOVES");
 NAMESPACE_DEBUG_CHANNELS_END
+#endif
 
 RookMoves::RookMoves(Board const& board)
 {

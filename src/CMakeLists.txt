@@ -12,6 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(infchess
   Board.cxx
+  Classification.cxx
   Color.cxx
   Data.cxx
   FEN.cxx

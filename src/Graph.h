@@ -12,6 +12,7 @@ class Graph
   using mate_in_ply_type = std::vector<positions_type>;                 // Store all boards that are mate in `ply` at index `ply`.
 
  private:
+  int board_size_;
   nodes_type black_to_move_;
   nodes_type white_to_move_;
   mate_in_ply_type mate_in_ply_;
@@ -19,7 +20,13 @@ class Graph
  public:
   Graph(int board_size);
 
-  void generate(int ply);
+  // Accessors (for debugging purposes).
+  nodes_type const& black_to_move_map() const { return black_to_move_; }
+  nodes_type const& white_to_move_map() const { return white_to_move_; }
+
+  void classify();
+//  void generate(int ply);
+  void generate_edges();
 
   positions_type const& mate_in_ply(int ply) const
   {
@@ -30,5 +37,5 @@ class Graph
 
  public:
   // Generate all positions that `to_move` can reach the position of `board` in one ply.
-  std::vector<Board> adjacent_positions(Board const& board, Color to_move);
+//  std::vector<Board> adjacent_positions(Board const& board, Color to_move);
 };

@@ -2,6 +2,7 @@
 #include "Position.h"
 #include "Graph.h"
 #include "TwoKings.h"
+#include "Box.h"
 #include <vector>
 #include <iostream>
 #include <cassert>
@@ -11,7 +12,10 @@ int main()
 {
   Debug(NAMESPACE_DEBUG::init());
 
-  constexpr int board_size = 5;
+  constexpr int board_size = 10;
+
+  // Construct the initial graph with all positions that are already mate.
+  Graph graph(board_size);
 
   int total_positions = 0;
   int draw_positions = 0;
@@ -20,19 +24,25 @@ int main()
   int stalemate_positions = 0;
 
   // Generate all possible positions
-  std::vector<Position> positions = Position::analyze_all(board_size);
-  total_positions = positions.size();
+  graph.classify();
 
-  for (Position const& pos : positions)
+  for (int color = 0; color <= 1; ++color)
   {
-    if (pos.is_draw())
-      ++draw_positions;
-    if (pos.is_check())
-      ++black_in_check_positions;
-    if (pos.is_mate())
-      ++mate_positions;
-    if (pos.is_stalemate())
-      ++stalemate_positions;
+    Color to_move(static_cast<color_type>(color));
+    Graph::nodes_type const& map = to_move == black ? graph.black_to_move_map() : graph.white_to_move_map();
+    total_positions += map.size();
+    for (auto& board_data : map)
+    {
+      Classification const& pc = board_data.second;
+      if (pc.is_draw())
+        ++draw_positions;
+      if (pc.is_check())
+        ++black_in_check_positions;
+      if (pc.is_mate())
+        ++mate_positions;
+      if (pc.is_stalemate())
+        ++stalemate_positions;
+    }
   }
 
   std::cout << "Total legal positions: " << total_positions << std::endl;
@@ -41,14 +51,52 @@ int main()
   std::cout << "Mate positions: " << mate_positions << std::endl;
   std::cout << "Stalemate positions: " << stalemate_positions << std::endl;
 
-  // Construct the initial graph with all positions that are already mate.
-  Graph graph(board_size);
+  // Generate links for all legal moves.
+  graph.generate_edges();
 
+  auto iter = graph.white_to_move_map().begin();
+  while (iter->first.black_king() == iter->first.white_rook())
+    ++iter;
+  Board const* board = &iter->first;
+  for (;;)
+  {
+    std::cout << "\nCurrent position:\n";
+    board->utf8art(std::cout);
+
+    std::vector<Graph::nodes_type::const_iterator> possible_moves = iter->second.possible_moves();
+    std::vector<Box> boxes;
+    for (int i = 0; i < possible_moves.size(); ++i)
+    {
+      boxes.emplace_back();
+      boxes.back().stream() << "\n" << i << ":\n";
+      possible_moves[i]->first.utf8art(boxes.back().stream());
+    }
+
+    BoxRow row;
+    size_t const MAX_WIDTH = 120;
+    size_t current_width = 0;
+    int i = 0;
+    while (i < boxes.size())
+    {
+      if (current_width + boxes[i].width() > MAX_WIDTH)
+        row.flush();
+      current_width = row.add_box(boxes[i]);
+      ++i;
+    }
+    if (!row.empty())
+      row.flush();
+
+    std::cin >> i;
+    iter = possible_moves[i];
+    board = &iter->first;
+  }
+
+#if 0
   // Generate all positions that are mate in 1, 2, ..., `ply` moves.
-  int max_ply = 21;
-  Debug(libcwd::libcw_do.off());
+  int max_ply = 30;
+  //Debug(libcwd::libcw_do.off());
   graph.generate(max_ply);
-  Debug(libcwd::libcw_do.on());
+  //Debug(libcwd::libcw_do.on());
 
   // All squares that a rook can stand on, given the squares of the kings and the number of moves.
   using rook_positions_type = std::vector<Square>;
@@ -58,7 +106,8 @@ int main()
   std::vector<kings_to_rooks_map_type> ply_to_map(max_ply + 1);
 
   // For a given number of moves that a position must be mate...
-  for (int ply = 0; ply < ply_to_map.size(); ++ply)
+  Dout(dc::notice, "The size of ply_to_map is " << ply_to_map.size());
+  for (int ply = 4; ply < ply_to_map.size(); ++ply)
   {
     kings_to_rooks_map_type& kings_to_rooks_map = ply_to_map[ply];      // The map to use.
     // ...run over all positions that are mate in ply moves.
@@ -80,7 +129,8 @@ int main()
       TwoKings const& two_kings = value.first;
       rook_positions_type const& rook_positions = value.second;
 
-      Board::utf8art(std::cout, [&](Square pos) -> Board::Figure {
+      Dout(dc::notice, "Black king: " << two_kings.bk() << ", white king: " << two_kings.wk() << ", ply: " << ply);
+      Board::utf8art(std::cout, board_size, [&](Square pos) -> Board::Figure {
         if (pos == two_kings.bk())
           return Board::Figure::black_king;
         else if (pos == two_kings.wk())
@@ -99,4 +149,5 @@ int main()
       std::cout << std::endl;
     }
   }
+#endif
 }

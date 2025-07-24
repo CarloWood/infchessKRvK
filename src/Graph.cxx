@@ -1,17 +1,21 @@
 #include "sys.h"
+#include "Position.h"
 #include "Graph.h"
 #include "KingMoves.h"
 #include "RookMoves.h"
 #include "debug.h"
 
+#ifdef CWDEBUG
 NAMESPACE_DEBUG_CHANNELS_START
 channel_ct alternate("ALTERNATE");
 channel_ct adjacent("ADJACENT");
 channel_ct edge("EDGE");
 NAMESPACE_DEBUG_CHANNELS_END
+#endif
 
-Graph::Graph(int board_size)
+Graph::Graph(int board_size) : board_size_(board_size)
 {
+#if 0
   // All positions where black is mate (i.e. black is to move).
   std::vector<Board> mate_positions;
 
@@ -41,13 +45,16 @@ Graph::Graph(int board_size)
   mate_in_ply_.resize(1);
   for (Board const& board : mate_positions)
   {
-    auto ibp = black_to_move_.try_emplace(board, 0);
-    // Only store positions that were newly inserted in the vector.
-    if (ibp.second)
-      mate_in_ply_[0].push_back(ibp.first);
+    Dout(dc::notice, "Trying to find " << board << " in black_to_move_.");
+    auto iter = black_to_move_.find(board);
+    ASSERT(iter != black_to_move_.end());
+    ASSERT(iter->second.is_mate());
+    mate_in_ply_[0].push_back(iter);
   }
+#endif
 }
 
+#if 0
 std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color current_to_move)
 {
   DoutEntering(dc::notice, "Graph::adjacent_positions(" << current_board << ", " << current_to_move << ")");
@@ -56,7 +63,6 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color c
 
   // Set `to_move` to the player that is to move in the positions that we are generating.
   Color to_move = current_to_move.opponent();
-  int const board_size = current_board.board_size();
   Square const cbk = current_board.black_king();
   Square const cwk = current_board.white_king();    // The 'c' stands for Current, Constant or Canonical - your pick.
   Square const cwr = current_board.white_rook();
@@ -78,7 +84,7 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color c
     for (Square bk : KingMoves{current_board, black})
     {
       // Construct the preceding board, where black is to play.
-      Board adjacent_board(board_size, bk, cwk, cwr);
+      Board adjacent_board(board_size_, bk, cwk, cwr);
       Dout(dc::adjacent, "Adjacent board (created from index " << index << ") - derived from " << current_board << ":");
       Debug(adjacent_board.debug_utf8art(dc::adjacent));
       bool valid = true;
@@ -136,10 +142,10 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color c
 
           // Generate an alternative position that black could have chosen from the position of adjacent_board.
           // On this board it is white to move.
-          Board alternate_board(board_size, bk, cwk2, cwr2);
+          Board alternate_board(board_size_, bk, cwk2, cwr2);
 
           // Reject `adjacent_board` if black could have avoided it by doing a different move, by stepping over one of the virtual edges.
-          if (bk[x] == board_size || bk[y] == board_size)
+          if (bk[x] == board_size_ || bk[y] == board_size_)
           {
             Dout(dc::alternate|dc::adjacent, "Black can escape outside the board with K" << bk <<
                 "! Rejecting position " << adjacent_board << ".");
@@ -151,7 +157,7 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color c
           // If this alternate move is unknown yet, then it will be a position in which it takes longer to mate black.
           if (white_to_move_.find(alternate_board) == white_to_move_.end())
           {
-            Dout(dc::alternate|dc::adjacent, "There is a better move for black K" << bk << "! Rejecting position " << adjacent_board << ".");
+            Dout(dc::alternate|dc::adjacent, "There is a better move for black: K" << bk << "! Rejecting position " << adjacent_board << ".");
             valid = false;
             break;
           }
@@ -177,7 +183,7 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color c
       int index = 0;
       for (Square wk : KingMoves{current_board, white})
       {
-        result.emplace_back(board_size, cbk, wk, cwr);
+        result.emplace_back(board_size_, cbk, wk, cwr);
         Dout(dc::adjacent, "Added adjacent board (created from index " << index << ") - derived from " << current_board << " :");
         Debug(result.back().debug_utf8art(dc::adjacent));
         ++index;
@@ -189,7 +195,7 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color c
     {
       if (wr == cbk)    // Don't consider the drawn position where the rook was already captured.
         continue;
-      result.emplace_back(board_size, cbk, cwk, wr);
+      result.emplace_back(board_size_, cbk, cwk, wr);
       Dout(dc::adjacent, "Added adjacent board (created from index " << index << ") - derived from " << current_board << " :");
       Debug(result.back().debug_utf8art(dc::adjacent));
       ++index;
@@ -198,7 +204,74 @@ std::vector<Board> Graph::adjacent_positions(Board const& current_board, Color c
 
   return result;
 }
+#endif
 
+void Graph::classify()
+{
+  // Generate all possible positions.
+  for (int bk_x = 0; bk_x < board_size_; ++bk_x)
+  {
+    for (int bk_y = 0; bk_y < board_size_; ++bk_y)
+    {
+      for (int wk_x = 0; wk_x < board_size_; ++wk_x)
+      {
+        for (int wk_y = 0; wk_y < board_size_; ++wk_y)
+        {
+          for (int wr_x = 0; wr_x < board_size_; ++wr_x)
+          {
+            for (int wr_y = 0; wr_y < board_size_; ++wr_y)
+            {
+              for (int color = 0; color < 2; ++color)
+              {
+                Square black_king{bk_x, bk_y};
+                Square white_king{wk_x, wk_y};
+                Square white_rook{wr_x, wr_y};
+                Color to_move(static_cast<color_type>(color));
+
+                Position pos(board_size_, black_king, white_king, white_rook, to_move);
+
+                if (pos.determine_legal(to_move))
+                {
+                  pos.classify();
+                  if (to_move == black)
+                    black_to_move_.try_emplace(pos, pos.classification());
+                  else
+                    white_to_move_.try_emplace(pos, pos.classification());
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void Graph::generate_edges()
+{
+  for (int color = 0; color <= 1; ++color)
+  {
+    Color to_move(static_cast<color_type>(color));
+    nodes_type& map       = to_move == black ? black_to_move_ : white_to_move_;
+    nodes_type& other_map = to_move == black ? white_to_move_ : black_to_move_;
+
+    for (nodes_type::value_type& value : map)
+    {
+      Board const& board = value.first;
+      Data& data = value.second;
+      std::vector<Board> succeeding_boards = board.get_succeeding_boards(to_move);
+      for (Board const& board : succeeding_boards)
+      {
+        nodes_type::const_iterator iter = other_map.find(board);
+        if (iter == other_map.end())
+          continue;
+        data.add_edge(iter);
+      }
+    }
+  }
+}
+
+#if 0
 void Graph::generate(int ply)
 {
   DoutEntering(dc::notice, "Graph::generate(" << ply << ")");
@@ -282,3 +355,4 @@ void Graph::generate(int ply)
     }
   }
 }
+#endif

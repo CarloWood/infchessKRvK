@@ -2,6 +2,7 @@
 
 #include "Board.h"
 #include "Color.h"
+#include "Classification.h"
 #include "utils/has_print_on.h"
 #include <cstdint>
 #include <vector>
@@ -24,17 +25,9 @@ public:
     yes
   };
 
-  struct Classification
-  {
-    static constexpr uint8_t mate = 1;
-    static constexpr uint8_t stalemate = 2;
-    static constexpr uint8_t draw = 4;
-    static constexpr uint8_t check = 8;
-  };
-
 private:
   Color to_move_;
-  std::uint8_t classification_;
+  Classification classification_;
 
  public:
   Position(int board_size, Square const& black_king, Square const& white_king, Square const& white_rook, Color to_move) :
@@ -43,21 +36,18 @@ private:
  public:
   // Accessors.
   Color to_move() const { return to_move_; }
-  bool has_classification(uint8_t classification_mask) const { return (classification_mask & classification_) == classification_mask; }
-  bool is_mate() const { return (classification_ & Classification::mate); }
-  bool is_stalemate() const { return (classification_ & Classification::stalemate); }
-  bool is_draw() const { return (classification_ & Classification::draw); }
-  bool is_check() const { return (classification_ & Classification::check); }
+  Classification const& classification() const { return classification_; }
 
   // Returns all possible legal positions, already classified.
   static std::vector<Position> analyze_all(int board_size);
+
+  // Called by Graph::classify.
+  void classify();
 
  private:
   // These are only called for legal positions:
   Mate determine_mate() const;          // Uses black_has_moves and determine_check.
   bool determine_draw() const;          // Uses determine_mate.
-
-  void classify();
 
   // Toggle whose turn it is.
   void null_move()
@@ -90,12 +80,6 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& os, Position::Mate mate);
-
-inline std::ostream& operator<<(std::ostream& os, Position const& pos)
-{
-  pos.print_on(os);
-  return os;
-}
 
 #if 0
 template<typename T, size_t number_of_implementations>

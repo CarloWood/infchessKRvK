@@ -188,6 +188,75 @@ bool Board::determine_legal(Color to_move) const
   return !determine_check();
 }
 
+std::vector<Board> Board::get_succeeding_boards(Color to_move) const
+{
+  std::vector<Board> result;
+
+  if (white_rook_ == black_king_)
+  {
+    // With white to move, do not generate any moves once the rook is captured.
+  }
+  else if (to_move == black)
+  {
+    using namespace coordinates;
+    Board succeeding_board(*this);
+    int cbkx = black_king_[x];
+    int cbky = black_king_[y];
+    for (int dx = -1; dx <= 1; ++dx)
+    {
+      for (int dy = -1; dy <= 1; dy += dx == 0 ? 2 : 1)
+      {
+        succeeding_board.set_black_king_square({cbkx + dx, cbky + dy});
+        result.push_back(succeeding_board);
+      }
+    }
+  }
+  else
+  {
+    using namespace coordinates;
+    int const cwkx = white_king_[x];
+    int const cwky = white_king_[y];
+    {
+      Board succeeding_board(*this);
+      for (int dx = -1; dx <= 1; ++dx)
+      {
+        for (int dy = -1; dy <= 1; dy += dx == 0 ? 2 : 1)
+        {
+          succeeding_board.set_white_king_square({cwkx + dx, cwky + dy});
+          result.push_back(succeeding_board);
+        }
+      }
+    }
+    {
+      Board succeeding_board(*this);
+      int const cwrx = white_rook_[x];
+      int const cwry = white_rook_[y];
+      for (int horvert = 0; horvert < 2; ++horvert)
+      {
+        for (int dir = -1; dir <= 1; dir += 2)
+        {
+          for (int dist = 1; dist < board_size_; ++dist)
+          {
+            int wrx = cwrx;
+            int wry = cwry;
+            if (horvert == 0)   // Move horizontal.
+              wrx += dir * dist;
+            else                // Move vertical.
+              wry += dir * dist;
+            // Can't move through the white king.
+            if (wrx == cwkx && wry == cwky)
+              break;
+            succeeding_board.set_white_rook_square({wrx, wry});
+            result.push_back(succeeding_board);
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 //=============================================================================
 // Printing a board.
 //
@@ -234,9 +303,8 @@ void print_rook_to(std::ostream& os)
 }
 
 //static
-void Board::utf8art(std::ostream& os, std::function<Figure (Square)> select_figure)
+void Board::utf8art(std::ostream& os, int board_size, std::function<Figure (Square)> select_figure)
 {
-  int board_size = 5;
   if (board_size > 10)
   {
     os << "\n    ";
@@ -249,8 +317,9 @@ void Board::utf8art(std::ostream& os, std::function<Figure (Square)> select_figu
       else
         os << (tenth % 10);
     }
+    os << "\n";
   }
-  os << "\n  ";
+  os << "  ";
   os.write(reinterpret_cast<const char*>(corner.data()), corner.size());
   for (int x = 0; x < board_size; ++x)
   {
@@ -282,7 +351,7 @@ void Board::utf8art(std::ostream& os, std::function<Figure (Square)> select_figu
 
 void Board::utf8art(std::ostream& os) const
 {
-  Board::utf8art(os, [this](Square pos){
+  Board::utf8art(os, board_size_, [this](Square pos){
     if (black_king_ == pos)
       return Figure::black_king;
     else if (white_king_ == pos)

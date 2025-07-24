@@ -74,11 +74,11 @@ bool Position::determine_draw() const
 
 void Position::classify()
 {
-  classification_ = 0;
+  classification_.reset();
   if (determine_check())
-    classification_ |= Classification::check;
+    classification_.set_check();
   if (determine_draw())
-    classification_ |= Classification::draw;
+    classification_.set_draw();
   // Position can not be (stale)mate unless it is black to move.
   if (to_move_ == black)
   {
@@ -86,60 +86,19 @@ void Position::classify()
     Mate mate = determine_mate();
     if (mate == Mate::yes)
     {
-      ASSERT(!has_moves && is_check() && !is_draw());
-      classification_ |= Classification::mate;
+      ASSERT(!has_moves && classification_.is_check() && !classification_.is_draw());
+      classification_.set_mate();
     }
     else if (mate == Mate::stalemate)
     {
-      ASSERT(!has_moves && !is_check() && is_draw());
-      classification_ |= Classification::stalemate;
+      ASSERT(!has_moves && !classification_.is_check() && classification_.is_draw());
+      classification_.set_stalemate();
     }
     else
     {
       ASSERT(has_moves || black_king_[0] == board_size_ - 1 || black_king_[1] == board_size_ - 1);
     }
   }
-}
-
-//static
-std::vector<Position> Position::analyze_all(int board_size)
-{
-  std::vector<Position> positions;
-  // Generate all possible positions.
-  for (int bk_x = 0; bk_x < board_size; ++bk_x)
-  {
-    for (int bk_y = 0; bk_y < board_size; ++bk_y)
-    {
-      for (int wk_x = 0; wk_x < board_size; ++wk_x)
-      {
-        for (int wk_y = 0; wk_y < board_size; ++wk_y)
-        {
-          for (int wr_x = 0; wr_x < board_size; ++wr_x)
-          {
-            for (int wr_y = 0; wr_y < board_size; ++wr_y)
-            {
-              for (int color = 0; color < 2; ++color)
-              {
-                Square black_king{bk_x, bk_y};
-                Square white_king{wk_x, wk_y};
-                Square white_rook{wr_x, wr_y};
-                Color to_move(static_cast<color_type>(color));
-
-                Position pos(board_size, black_king, white_king, white_rook, to_move);
-
-                if (pos.determine_legal(to_move))
-                {
-                  pos.classify();
-                  positions.push_back(pos);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return positions;
 }
 
 std::ostream& operator<<(std::ostream& os, Position::Mate mate)
@@ -159,7 +118,9 @@ std::ostream& operator<<(std::ostream& os, Position::Mate mate)
   return os;
 }
 
+#ifdef CWDEBUG
 void Position::print_on(std::ostream& os) const
 {
   os << static_cast<Board const&>(*this) << ", to move: " << to_move_;
 }
+#endif

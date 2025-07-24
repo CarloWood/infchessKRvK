@@ -45,7 +45,7 @@ class Board
     white_rook
   };
 
-  static void utf8art(std::ostream& os, std::function<Figure (Square)> select_figure);
+  static void utf8art(std::ostream& os, int board_size, std::function<Figure (Square)> select_figure);
   void utf8art(std::ostream& os) const;
 
   void set_black_king_square(Square bk_pos)
@@ -74,11 +74,14 @@ class Board
  protected:
   bool black_has_moves() const;
   bool determine_check() const;
-  friend class KingMoves;
-  friend class RookMoves;
+
+ public:
   bool determine_legal(Color to_move) const;    // Uses determine_check.
 
+  std::vector<Board> get_succeeding_boards(Color to_move) const;
+
 #if CW_DEBUG
+ private:
   // By default, assume black is to move (only used for an assert).
   virtual bool black_is_to_move() const { return true; }
 #endif
