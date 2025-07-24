@@ -17,12 +17,10 @@ class Classification
   static constexpr uint8_t check = 8;
 
  protected:
-  std::uint8_t bits_;
-  int mate_in_moves_;                   // Number of moves (in ply) required to reach mate under optimal play.
+  std::uint8_t bits_{};
+  int mate_in_moves_{-1};       // Number of moves (in ply) required to reach mate under optimal play, or -1 if unknown.
 
  public:
-  Classification() : bits_{}, mate_in_moves_{} { }
-
   // Clear all classification bits.
   void reset()
   {
@@ -36,6 +34,8 @@ class Classification
   void set_mate() { bits_ |= mate; }
   // Set the stalemate bit.
   void set_stalemate() { bits_ |= stalemate; }
+  // Set in how many ply this position is mate.
+  void set_mate_in_ply(int ply) { mate_in_moves_ = ply; }
 
   // Accessors.
   bool has_classification(uint8_t classification_mask) const { return (classification_mask & bits_) == classification_mask; }

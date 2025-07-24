@@ -21,6 +21,8 @@ class Graph
   Graph(int board_size);
 
   // Accessors (for debugging purposes).
+  nodes_type& black_to_move_map() { return black_to_move_; }
+  nodes_type& white_to_move_map() { return white_to_move_; }
   nodes_type const& black_to_move_map() const { return black_to_move_; }
   nodes_type const& white_to_move_map() const { return white_to_move_; }
 
