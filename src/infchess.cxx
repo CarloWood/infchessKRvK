@@ -17,7 +17,7 @@ int main()
   // Construct the initial graph with all positions that are already mate.
   Graph graph(board_size);
 
-  int total_positions = 0;
+  int total_positions;
   int draw_positions = 0;
   int black_in_check_positions = 0;
   int mate_positions = 0;
@@ -26,18 +26,17 @@ int main()
   // Generate all possible positions
   graph.classify();
 
-  std::vector<Graph::nodes_type::iterator> already_mate;
+  std::vector<Graph::black_to_move_nodes_type::iterator> already_mate;
 
-  for (int color = 0; color <= 1; ++color)
+  // Black to move positions.
   {
-    Color to_move(static_cast<color_type>(color));
-    Graph::nodes_type& color_to_move_map = to_move == black ? graph.black_to_move_map() : graph.white_to_move_map();
-    total_positions += color_to_move_map.size();
-    for (Graph::nodes_type::iterator current_position = color_to_move_map.begin();
-        current_position != color_to_move_map.end(); ++current_position)
+    Graph::black_to_move_nodes_type& black_to_move_map = graph.black_to_move_map();
+    total_positions = black_to_move_map.size();
+    for (Graph::black_to_move_nodes_type::iterator current_position = black_to_move_map.begin();
+        current_position != black_to_move_map.end(); ++current_position)
     {
       Board const& current_board = current_position->first;
-      Data const& data = current_position->second;
+      BlackToMoveData const& data = current_position->second;
       Classification const& pc = data;
       if (pc.is_draw())
         ++draw_positions;
@@ -52,6 +51,20 @@ int main()
         ++stalemate_positions;
     }
   }
+  // White to move positions.
+  {
+    Graph::white_to_move_nodes_type& white_to_move_map = graph.white_to_move_map();
+    total_positions += white_to_move_map.size();
+    for (Graph::white_to_move_nodes_type::iterator current_position = white_to_move_map.begin();
+        current_position != white_to_move_map.end(); ++current_position)
+    {
+      Board const& current_board = current_position->first;
+      WhiteToMoveData const& data = current_position->second;
+      Classification const& pc = data;
+      if (pc.is_draw())
+        ++draw_positions;
+    }
+  }
 
   std::cout << "Total legal positions: " << total_positions << std::endl;
   std::cout << "Draw positions: " << draw_positions << std::endl;
@@ -64,21 +77,22 @@ int main()
 
   // Run over all positions that are already mate (as per the classification)
   // and mark all position that can reach those as mate in 1 ply.
-  for (Graph::nodes_type::iterator iter : already_mate)
+  for (Graph::black_to_move_nodes_type::iterator iter : already_mate)
   {
-    Data& data = iter->second;
+    BlackToMoveData& data = iter->second;
     data.set_mate_in_ply(0);
     data.set_maximum_ply_on_parents(1);
   }
 
   // Print all positions that are mate in one ply.
-  for (Graph::nodes_type::value_type board_data : graph.white_to_move_map())
+  for (Graph::white_to_move_nodes_type::value_type board_data : graph.white_to_move_map())
   {
     if (board_data.second.ply() == 1)
       board_data.first.utf8art(std::cout);
   }
 
-  Graph::nodes_type::const_iterator iter = graph.white_to_move_map().begin();
+#if 0
+  Graph::white_to_move_nodes_type::const_iterator iter = graph.white_to_move_map().begin();
   while (iter->first.black_king() == iter->first.white_rook())
     ++iter;
   Board const* board = &iter->first;
@@ -114,6 +128,7 @@ int main()
     iter = child_positions[i];
     board = &iter->first;
   }
+#endif
 
 #if 0
   // Generate all positions that are mate in 1, 2, ..., `ply` moves.

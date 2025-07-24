@@ -21,7 +21,7 @@ struct Color
     return *this;
   }
 
-  [[nodiscard]] Color opponent() const
+  [[nodiscard]] constexpr Color opponent() const
   {
     return {color_ == black ? white : black};
   }

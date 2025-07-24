@@ -249,29 +249,8 @@ void Graph::classify()
 
 void Graph::generate_edges()
 {
-  for (int color = 0; color <= 1; ++color)
-  {
-    Color to_move(static_cast<color_type>(color));
-    // The map containing all positions with `color` to move.
-    nodes_type& color_to_move_map = to_move == black ? black_to_move_ : white_to_move_;
-    // The map containing all positions with the other color to move.
-    nodes_type& other_to_move_map = to_move == black ? white_to_move_ : black_to_move_;
-
-    for (nodes_type::iterator current_position = color_to_move_map.begin();
-        current_position != color_to_move_map.end(); ++current_position)
-    {
-      Board const& current_board = current_position->first;
-      Data& data = current_position->second;
-      std::vector<Board> succeeding_boards = current_board.get_succeeding_boards(to_move);
-      for (Board const& succeeding_board : succeeding_boards)
-      {
-        nodes_type::iterator child_position = other_to_move_map.find(succeeding_board);
-        if (child_position == other_to_move_map.end())
-          continue;     // Non-existing boards are illegal.
-        data.add_edges(current_position, child_position);
-      }
-    }
-  }
+  generate_edges_with_color<black>();
+  generate_edges_with_color<white>();
 }
 
 #if 0

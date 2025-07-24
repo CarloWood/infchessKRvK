@@ -14,7 +14,8 @@ add_executable(infchess
   Board.cxx
   Classification.cxx
   Color.cxx
-  Data.cxx
+  BlackToMoveData.cxx
+  WhiteToMoveData.cxx
   FEN.cxx
   Graph.cxx
   KingMoves.cxx
