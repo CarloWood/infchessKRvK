@@ -17,14 +17,34 @@ void WhiteToMoveData::add_edges(white_to_move_nodes_type::iterator const& curren
   succeeding_board->second.parent_positions_.push_back(current_board);
 }
 
-void WhiteToMoveData::set_maximum_ply_on_parents(int max_ply)
+void WhiteToMoveData::set_minimum_ply_on_parents(std::vector<black_to_move_nodes_type::iterator>& parents)
 {
+  DoutEntering(dc::notice, "WhiteToMoveData::set_minimum_ply_on_parents(" << min_ply << ", ...)");
+
+  // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_moves_` detemined.
+  ASSERT(mate_in_moves_ != -1);
+  // Any parent position can not be mate in less than `mate_in_moves_ + 1` ply, because in the parent
+  // position it is black to move and black would pick the move that leads to mate in the largest number
+  // of moves.
+  int const min_ply = mate_in_moves_ + 1;
   for (black_to_move_nodes_type::iterator parent_position : parent_positions_)
   {
-    BlackToMoveData& data = parent_position->second;
-    int ply = data.ply();
-    if (ply == -1 || max_ply < ply)
-      data.set_mate_in_ply(max_ply);
+    BlackToMoveData& black_to_move_data = parent_position->second;
+
+    if (black_to_move_data.is_draw())
+      continue;
+
+    // Call set_minimum_ply_on_parents exactly once for each position (where white is to move).
+    // In that case, the mate_in_moves_ member is only set when the last child has set_minimum_ply_on_parents called.
+    ASSERT(black_to_move_data.ply() == -1);
+
+    // Inform parent that another child has its mate_in_moves_ set. This will append the parent to parents
+    // if the parent is now known to be mate in `min_ply` moves because this was its last child.
+    if (black_to_move_data.increment_processed_children())      // Was this the last child?
+    {
+      parent_position->second.set_mate_in_ply(min_ply);
+      parents.push_back(parent_position);
+    }
   }
 }
 

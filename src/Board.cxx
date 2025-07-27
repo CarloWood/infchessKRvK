@@ -274,8 +274,9 @@ std::u8string_view const white_king = u8" ♔";
 std::u8string_view const white_rook = u8" ♖";
 std::u8string_view const white_none = u8"  ";
 std::u8string_view const corner     = u8" ┏";
-std::u8string_view const top_side   = u8"━";
 std::u8string_view const left_side  = u8" ┃";
+std::u8string_view const bcorner    = u8" ┗";
+std::u8string_view const top_side   = u8"━";
 } // namespace
 
 // Write std::u8string_view to an ostream as-is.
@@ -305,32 +306,10 @@ void print_rook_to(std::ostream& os)
 //static
 void Board::utf8art(std::ostream& os, int board_size, std::function<Figure (Square)> select_figure)
 {
-  if (board_size > 10)
-  {
-    os << "\n    ";
-    for (int x = 0; x < board_size; ++x)
-    {
-      int tenth = x / 10;
-      os << ' ';
-      if (tenth == 0)
-        os << ' ';
-      else
-        os << (tenth % 10);
-    }
-    os << "\n";
-  }
-  os << "  ";
-  os.write(reinterpret_cast<const char*>(corner.data()), corner.size());
-  for (int x = 0; x < board_size; ++x)
-  {
-    os.write(reinterpret_cast<const char*>(top_side.data()), top_side.size());
-    os << (x % 10);
-  }
-  os << '\n';
   // Print top to bottom.
-  for (int y = 0; y < board_size; ++y)
+  for (int y = board_size - 1; y >= 0; --y)
   {
-    os << std::setw(2) << std::setfill(' ') << std::right << (y % 100);
+    os << std::setw(2) << std::setfill(' ') << std::right << (y + 1);
     os.write(reinterpret_cast<const char*>(left_side.data()), left_side.size());
     // Print left to right.
     for (int x = 0; x < board_size; ++x)
@@ -344,6 +323,28 @@ void Board::utf8art(std::ostream& os, int board_size, std::function<Figure (Squa
         print_rook_to(os);
       else
         print_none_to(os, (x + y) % 2 == 1 ? black : white);
+    }
+    os << "\n";
+  }
+  os << "  ";
+  os.write(reinterpret_cast<const char*>(bcorner.data()), bcorner.size());
+  for (int x = 0; x < board_size; ++x)
+  {
+    os.write(reinterpret_cast<const char*>(top_side.data()), top_side.size());
+    os << static_cast<char>('a' + x % 26);
+  }
+  os << '\n';
+  if (board_size > 26)
+  {
+    os << "\n    ";
+    for (int x = 0; x < board_size; ++x)
+    {
+      int z = x / 26;
+      os << ' ';
+      if (z == 0)
+        os << ' ';
+      else
+        os << static_cast<char>('a' + z % 26);
     }
     os << "\n";
   }
@@ -361,20 +362,6 @@ void Board::utf8art(std::ostream& os) const
     else
       return Figure::none;
   });
-}
-
-bool Board::distance_less(Board const& board) const
-{
-  // This function is only used for ordering of a std::map.
-  if (black_king_.distance_less(board.black_king_))
-    return true;
-  if (board.black_king_.distance_less(black_king_))
-    return false;
-  if (white_king_.distance_less(board.white_king_))
-    return true;
-  if (board.white_king_.distance_less(white_king_))
-    return false;
-  return white_rook_.distance_less(board.white_rook_);
 }
 
 #ifdef CWDEBUG

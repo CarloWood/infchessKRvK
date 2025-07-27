@@ -3,16 +3,18 @@
 #include "Graph.h"
 #include "TwoKings.h"
 #include "Box.h"
+#include "parse_move.h"
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include <variant>
 #include "debug.h"
 
 int main()
 {
   Debug(NAMESPACE_DEBUG::init());
 
-  constexpr int board_size = 5;
+  constexpr int board_size = 12;
 
   // Construct the initial graph with all positions that are already mate.
   Graph graph(board_size);
@@ -77,37 +79,155 @@ int main()
 
   // Run over all positions that are already mate (as per the classification)
   // and mark all position that can reach those as mate in 1 ply.
+  std::vector<Graph::white_to_move_nodes_type::iterator> white_to_move_parents;
   for (Graph::black_to_move_nodes_type::iterator iter : already_mate)
   {
-    BlackToMoveData& data = iter->second;
-    data.set_mate_in_ply(0);
-    data.set_maximum_ply_on_parents(1);
+    BlackToMoveData& black_to_move_data = iter->second;
+    black_to_move_data.set_mate_in_ply(0);
+    black_to_move_data.set_maximum_ply_on_parents(white_to_move_parents);
   }
 
-  // Print all positions that are mate in one ply.
-  for (Graph::white_to_move_nodes_type::value_type board_data : graph.white_to_move_map())
   {
-    if (board_data.second.ply() == 1)
-      board_data.first.utf8art(std::cout);
+    // white_to_move_parents are mate in `ply` moves.
+    int ply = 1;
+    while (!white_to_move_parents.empty())
+    {
+      std::vector<Graph::black_to_move_nodes_type::iterator> black_to_move_parents;
+      // Run over all positions that are mate in an odd number of ply.
+      for (Graph::white_to_move_nodes_type::iterator white_to_move_board_data_iter : white_to_move_parents)
+      {
+        WhiteToMoveData& white_to_move_data = white_to_move_board_data_iter->second;
+        ASSERT(white_to_move_data.ply() == ply);
+        white_to_move_data.set_minimum_ply_on_parents(black_to_move_parents);
+      }
+      ++ply;
+
+      if (black_to_move_parents.empty())
+        break;
+
+      white_to_move_parents.clear();
+      // Run over all positions that are mate in an even number of ply.
+      for (Graph::black_to_move_nodes_type::iterator board_data_iter : black_to_move_parents)
+      {
+        BlackToMoveData& data = board_data_iter->second;
+        ASSERT(data.ply() == ply);
+        data.set_maximum_ply_on_parents(white_to_move_parents);
+      }
+      ++ply;
+    }
+    Dout(dc::notice, "ply = " << ply);
   }
 
+  // Get a pointer to the initial position.
 #if 0
-  Graph::white_to_move_nodes_type::const_iterator iter = graph.white_to_move_map().begin();
-  while (iter->first.black_king() == iter->first.white_rook())
-    ++iter;
-  Board const* board = &iter->first;
+  Graph::white_to_move_nodes_type::const_iterator initial_position = graph.white_to_move_map().begin();
+  while (initial_position->first.black_king() == initial_position->first.white_rook())
+    ++initial_position;
+#else
+  Board b(board_size, {1, 5}, {4, 2}, {4, 0});
+  auto initial_position = graph.white_to_move_map().find(b);
+#endif
+  Board const* board = &initial_position->first;
+
+  // Define variants for a single node iterator, and a vector of node iterators.
+  using NodeIterator = std::variant<
+    Graph::black_to_move_nodes_type::const_iterator,
+    Graph::white_to_move_nodes_type::const_iterator
+  >;
+
+  // Define lambda's for accessing this variants.
+  auto get_ply = [](auto&& it) { return it->second.ply(); };
+  auto get_classification = [](auto&& it) -> Classification const& { return it->second; };
+
+  using ChildPositions = std::variant<
+    std::vector<Graph::black_to_move_nodes_type::const_iterator>,
+    std::vector<Graph::white_to_move_nodes_type::const_iterator>
+  >;
+
+  // Define lambda's for accessing this variants.
+  auto get_child_positions = [](auto&& it) -> ChildPositions { return it->second.child_positions(); };
+  auto get_size = [](auto&& child_positions) { return child_positions.size(); };
+  auto get_empty = [](auto&& child_positions) { return child_positions.empty(); };
+
+  // iter points to the current position.
+  NodeIterator iter = initial_position;
+  Color to_move(white);
+
   for (;;)
   {
-    std::cout << "\nCurrent position:\n";
+    int ply = std::visit(get_ply, iter);
+
+    std::cout << "\nCurrent position (" << to_move << " to move; mate in " << ply << " ply):\n";
     board->utf8art(std::cout);
 
-    std::vector<Graph::nodes_type::const_iterator> child_positions = iter->second.child_positions();
+    if (ply == 0)
+    {
+      if (std::visit(get_classification, iter).is_mate())
+        std::cout << "White won." << std::endl;
+      else
+        std::cout << "Stalemate." << std::endl;
+      break;
+    }
+
+    auto child_positions = std::visit(get_child_positions, iter);
+
+    if (to_move == black)
+    {
+      auto const& cps = std::get<std::vector<Graph::white_to_move_nodes_type::const_iterator>>(child_positions);
+      unsigned int max_ply = 0;
+      for (auto&& child : cps)
+      {
+        unsigned ply = child->second.ply();
+        if (ply >= max_ply)
+        {
+          max_ply = ply;
+          iter = child;
+        }
+      }
+    }
+    else
+
+#if 0
+    if (ply == -1 || std::visit(get_empty, child_positions))
+    {
+      Classification const& classification = std::visit(get_classification, iter);
+      if (classification.is_mate())
+      {
+        std::cout << "You won!" << std::endl;
+        break;
+      }
+      else if (classification.is_stalemate())
+      {
+        std::cout << "Oops, stalemate!" << std::endl;
+        break;
+      }
+      else if (classification.is_draw())
+      {
+        std::cout << "Sorry, draw!" << std::endl;
+        break;
+      }
+      else if (ply != -1)
+        break;
+      std::cout << "Black will keep this a draw!" << std::endl;
+    }
+
     std::vector<Box> boxes;
-    for (int i = 0; i < child_positions.size(); ++i)
+    for (int i = 0; i < std::visit(get_size, child_positions); ++i)
     {
       boxes.emplace_back();
       boxes.back().stream() << "\n" << i << ":\n";
-      child_positions[i]->first.utf8art(boxes.back().stream());
+      auto get_board = [i](auto&& child_positions) { return child_positions[i]->first; };
+      std::visit(get_board, child_positions).utf8art(boxes.back().stream());
+      auto get_classification_i = [i](auto&& child_positions) -> Classification const& { return child_positions[i]->second; };
+      Classification const& classification = std::visit(get_classification_i, child_positions);
+      if (classification.is_stalemate())
+        boxes.back().stream() << "Stalemate";
+      else if (classification.ply() == -1)
+        boxes.back().stream() << "Draw";
+      else if (classification.ply() == 0)
+        boxes.back().stream() << "Mate!";
+      else
+        boxes.back().stream() << "Mate in " << classification.ply() << " ply";
     }
 
     BoxRow row;
@@ -125,10 +245,42 @@ int main()
       row.flush();
 
     std::cin >> i;
-    iter = child_positions[i];
-    board = &iter->first;
-  }
+    iter = std::visit([i](auto&& vec) -> NodeIterator { return vec[i]; }, child_positions);
+#else
+    for (;;)
+    {
+      auto [piece, x, y] = parse_move(to_move, board_size);
+      Board new_board(*board);
+      if (to_move == white)
+      {
+        if (piece == 'R')
+          new_board.set_white_rook_square({x, y});
+        else
+          new_board.set_white_king_square({x, y});
+      }
+      else if (piece == 'K')
+        new_board.set_black_king_square({x, y});
+
+      try
+      {
+        iter = std::visit([&](auto&& vec) -> NodeIterator {
+          auto found = std::find_if(vec.begin(), vec.end(), [&](auto&& board){ return board->first == new_board; });
+          if (found == vec.end())
+            throw std::invalid_argument("Illegal move");
+          return *found;
+        }, child_positions);
+      }
+      catch (std::exception const& e)
+      {
+        std::cerr << "Error: " << e.what() << std::endl;
+        continue;
+      }
+      break;
+    }
 #endif
+    board = std::visit([](auto&& it) { return &it->first; }, iter);
+    to_move = to_move.opponent();
+  }
 
 #if 0
   // Generate all positions that are mate in 1, 2, ..., `ply` moves.

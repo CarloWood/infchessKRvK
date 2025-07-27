@@ -2,6 +2,7 @@
 
 #include "utils/has_print_on.h"
 #include <cstdint>
+#include "debug.h"
 
 #ifdef CWDEBUG
 // This class defines a print_on method.
@@ -35,7 +36,15 @@ class Classification
   // Set the stalemate bit.
   void set_stalemate() { bits_ |= stalemate; }
   // Set in how many ply this position is mate.
-  void set_mate_in_ply(int ply) { mate_in_moves_ = ply; }
+  void set_mate_in_ply(int ply)
+  {
+    ASSERT(ply >= 0);
+    // If it is a draw, then it isn't mate in `ply` moves; so why is this function being called?
+    ASSERT(!is_draw());
+    // If it mate then `ply` must be zero.
+    ASSERT(is_mate() == (ply == 0));
+    mate_in_moves_ = ply;
+  }
 
   // Accessors.
   bool has_classification(uint8_t classification_mask) const { return (classification_mask & bits_) == classification_mask; }

@@ -36,7 +36,23 @@ class Board
   Square const& white_rook() const { return white_rook_; }
   int board_size() const { return board_size_; }
 
-  bool distance_less(Board const& board) const;
+  bool distance_less(Board const& board) const
+  {
+    // This function is only used for ordering of a std::map.
+    if (black_king_.distance_less(board.black_king_))
+      return true;
+    if (board.black_king_.distance_less(black_king_))
+      return false;
+    if (white_king_.distance_less(board.white_king_))
+      return true;
+    if (board.white_king_.distance_less(white_king_))
+      return false;
+    return white_rook_.distance_less(board.white_rook_);
+  }
+
+  bool operator==(Board const& other) const {
+    return black_king_ == other.black_king_ && white_king_ == other.white_king_ && white_rook_ == other.white_rook_;
+  };
 
   enum class Figure {
     none,

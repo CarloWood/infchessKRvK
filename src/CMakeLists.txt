@@ -23,6 +23,7 @@ add_executable(infchess
   Square.cxx
   Position.cxx
   infchess.cxx
+  parse_move.cxx
 )
 
 target_link_libraries(infchess
