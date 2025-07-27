@@ -24,7 +24,6 @@ class BlackToMoveData : public Classification
                                                                                 // `WhiteToMoveData::set_minimum_ply_on_parents` has been called.
 
  public:
-  BlackToMoveData(Classification const& classification) : Classification(classification) { }
   std::vector<white_to_move_nodes_type::const_iterator> const& child_positions() const { return child_positions_; }
 
   void add_edges(black_to_move_nodes_type::iterator const& current_board, white_to_move_nodes_type::iterator const& succeeding_board);

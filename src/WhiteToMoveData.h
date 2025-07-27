@@ -22,7 +22,6 @@ class WhiteToMoveData : public Classification
   std::vector<black_to_move_nodes_type::iterator> parent_positions_;            // All parent (preceeding) positions.
 
  public:
-  WhiteToMoveData(Classification const& classification) : Classification(classification) { }
   std::vector<black_to_move_nodes_type::const_iterator> const& child_positions() const { return child_positions_; }
 
   void add_edges(white_to_move_nodes_type::iterator const& current_board, black_to_move_nodes_type::iterator const& succeeding_board);

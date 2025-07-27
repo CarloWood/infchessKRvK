@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Color.h"
 #include "utils/has_print_on.h"
 #include <cstdint>
 #include "debug.h"
@@ -8,6 +9,10 @@
 // This class defines a print_on method.
 using utils::has_print_on::operator<<;
 #endif
+
+namespace version0 {
+
+class Board;
 
 class Classification
 {
@@ -22,6 +27,9 @@ class Classification
   int mate_in_moves_{-1};       // Number of moves (in ply) required to reach mate under optimal play, or -1 if unknown.
 
  public:
+  void determine(Board const& board, Color to_move);
+
+ private:
   // Clear all classification bits.
   void reset()
   {
@@ -35,6 +43,7 @@ class Classification
   void set_mate() { bits_ |= mate; }
   // Set the stalemate bit.
   void set_stalemate() { bits_ |= stalemate; }
+ public:
   // Set in how many ply this position is mate.
   void set_mate_in_ply(int ply)
   {
@@ -46,6 +55,7 @@ class Classification
     mate_in_moves_ = ply;
   }
 
+ public:
   // Accessors.
   bool has_classification(uint8_t classification_mask) const { return (classification_mask & bits_) == classification_mask; }
   bool is_mate() const { return (bits_ & mate); }
@@ -58,3 +68,5 @@ class Classification
   void print_on(std::ostream& os) const;
 #endif
 };
+
+} // namespace version0

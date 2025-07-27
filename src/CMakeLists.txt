@@ -17,7 +17,6 @@ add_executable(infchess
   BlackToMoveData.cxx
   WhiteToMoveData.cxx
   Graph.cxx
-  Position.cxx
   Square.cxx
   infchess.cxx
   parse_move.cxx

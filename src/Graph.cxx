@@ -1,5 +1,4 @@
 #include "sys.h"
-#include "Position.h"
 #include "Graph.h"
 #include "debug.h"
 
@@ -228,15 +227,24 @@ void Graph::classify()
                 Square white_rook{wr_x, wr_y};
                 Color to_move(static_cast<color_type>(color));
 
-                Position pos(board_size_, black_king, white_king, white_rook, to_move);
+                Board pos(board_size_, black_king, white_king, white_rook);
 
                 if (pos.determine_legal(to_move))
                 {
-                  pos.classify();
+                  Classification* classification;
                   if (to_move == black)
-                    black_to_move_.try_emplace(pos, pos.classification());
+                  {
+                    auto ibp = black_to_move_.try_emplace(pos);
+                    ASSERT(ibp.second);
+                    classification = &ibp.first->second;
+                  }
                   else
-                    white_to_move_.try_emplace(pos, pos.classification());
+                  {
+                    auto ibp = white_to_move_.try_emplace(pos);
+                    ASSERT(ibp.second);
+                    classification = &ibp.first->second;
+                  }
+                  classification->determine(pos, to_move);
                 }
               }
             }

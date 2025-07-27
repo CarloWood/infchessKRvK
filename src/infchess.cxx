@@ -39,7 +39,7 @@ int main()
     {
       version0::Board const& current_board = current_position->first;
       version0::BlackToMoveData const& data = current_position->second;
-      Classification const& pc = data;
+      version0::Classification const& pc = data;
       if (pc.is_draw())
         ++draw_positions;
       if (pc.is_check())
@@ -62,7 +62,7 @@ int main()
     {
       version0::Board const& current_board = current_position->first;
       version0::WhiteToMoveData const& data = current_position->second;
-      Classification const& pc = data;
+      version0::Classification const& pc = data;
       if (pc.is_draw())
         ++draw_positions;
     }
@@ -137,7 +137,7 @@ int main()
 
   // Define lambda's for accessing this variants.
   auto get_ply = [](auto&& it) { return it->second.ply(); };
-  auto get_classification = [](auto&& it) -> Classification const& { return it->second; };
+  auto get_classification = [](auto&& it) -> version0::Classification const& { return it->second; };
 
   using ChildPositions0 = std::variant<
     std::vector<version0::Graph::black_to_move_nodes_type::const_iterator>,

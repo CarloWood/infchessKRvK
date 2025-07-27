@@ -3,6 +3,7 @@
 #include "Square.h"
 #include "Color.h"
 #include "utils/has_print_on.h"
+#include <cstdint>
 #include <functional>
 #include <tuple>
 #include "debug.h"
@@ -16,6 +17,14 @@ using utils::has_print_on::operator<<;
 
 class Board
 {
+public:
+  enum class Mate : std::uint8_t
+  {
+    no,
+    stalemate,
+    yes
+  };
+
  protected:
   int const board_size_;
   Square black_king_;
@@ -89,11 +98,12 @@ class Board
   void debug_utf8art(libcwd::channel_ct const& debug_channel) const;
 #endif
 
- protected:
+ public:
   bool black_has_moves() const;
   bool determine_check() const;
-
- public:
+  // These are only called for legal positions:
+  Mate determine_mate(Color to_move) const;     // Uses black_has_moves and determine_check.
+  bool determine_draw(Color to_move) const;     // Uses determine_mate.
   bool determine_legal(Color to_move) const;    // Uses determine_check.
 
   std::vector<Board> get_succeeding_boards(Color to_move) const;

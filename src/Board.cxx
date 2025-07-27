@@ -190,6 +190,73 @@ bool Board::determine_legal(Color to_move) const
   return !determine_check();
 }
 
+// Implementation written and tested by Carlo Wood - 2025/07/19.
+Board::Mate Board::determine_mate(Color to_move) const
+{
+  // (Stale)mate can only occur when it is blacks turn to move.
+  if (to_move != black)
+    return Mate::no;
+
+  // Now we know it's blacks turn, so we can use black_has_moves.
+  // If black has (legal) moves then it is neither mate nor stalemate.
+  if (black_has_moves())
+    return Mate::no;
+
+  // Black has no legal moves, therefore it must be mate or stalemate.
+  return determine_check() ? Mate::yes : Mate::stalemate;
+}
+
+// Written and tested by Carlo Wood - 2025/07/20.
+bool Board::determine_draw(Color to_move) const
+{
+  using namespace coordinates;
+
+  if (to_move == white)
+    // The position is only draw if the rook was captured.
+    return black_king_ == white_rook_;
+
+  // The position is a draw if it is stalemate.
+  Mate mate = determine_mate(to_move);
+  if (mate == Mate::stalemate)
+    return true;
+
+  // If the black king is in a corner of an edge and a virtual edge, then
+  // it has two potential squares to step out of reach: R and K, see below.
+  // The only way to stop the black king from going to K is if the white
+  // king is opposite of the black king, and the only way to stop the black
+  // king from going to R is if that is röntgen protected by the white rook:
+  //
+  //   A:  ┏━0━1━2━3   B:  ┏━0━1━2━3
+  //     0 ┃ ♜   ·       0 ┃ ♜ ♜ ♜ ♔ R
+  //     1 ┃ ♜ ·   ·     1 ┃   ·   · K
+  //     2 ┃ ♜   ·       2 ┃ ·   · ♚
+  //     3 ┃ ♔ · ♚ ·,    3 ┃   ·   ·
+  //         R K
+
+  // Set up coordinates for easy swapping.
+  auto [x, y] = Square::default_coordinates();
+  auto [bk, wk, wr] = Board::abbreviations();
+
+  // To simply the code below, lets flip the position if the king is on the right virtual edge.
+  if (bk[x] == board_size_ - 1)
+    std::swap(x, y);
+
+  // Now the king is on the bottom virtual edge, or at no virtual edge at all.
+  // If it is not at a virtual edge, it is not a draw.
+  if (bk[y] != board_size_ - 1)
+    return false;
+
+  // Now the black king is on the bottom virtual edge:
+  //   A:  ┏━0━1━2━3
+  //     0 ┃ ·   ·
+  //     1 ┃   ·   ·
+  //     2 ┃ ·   ·
+  //     3 ┃ ♔ ♔ ♔ ♔
+
+  // Hence it is a draw unless the position is position A.
+  return !(bk[x] == 0 && wk[x] == 2 && wk[y] == board_size_ - 1 && wr[x] == 0);
+}
+
 std::vector<Board> Board::get_succeeding_boards(Color to_move) const
 {
   std::vector<Board> result;
@@ -412,6 +479,23 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
     }
     Dout(debug_channel, oss.str());
   }
+}
+
+std::ostream& operator<<(std::ostream& os, Board::Mate mate)
+{
+  switch (mate)
+  {
+    case Board::Mate::yes:
+      os << "mate";
+      break;
+    case Board::Mate::stalemate:
+      os << "stalemate";
+      break;
+    case Board::Mate::no:
+      os << "not (stale)mate";
+      break;
+  }
+  return os;
 }
 
 void Board::print_on(std::ostream& os) const
