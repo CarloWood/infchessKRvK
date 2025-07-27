@@ -7,6 +7,8 @@
 #include <tuple>
 #include "debug.h"
 
+namespace version0 {
+
 #ifdef CWDEBUG
 // This class defines a print_on method.
 using utils::has_print_on::operator<<;
@@ -110,3 +112,5 @@ struct DistanceCompare
     return lhs.distance_less(rhs);
   }
 };
+
+} // namespace version0

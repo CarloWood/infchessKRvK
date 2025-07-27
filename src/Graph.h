@@ -5,6 +5,8 @@
 #include "Color.h"
 #include "debug.h"
 
+namespace version0 {
+
 class Graph
 {
  public:
@@ -100,3 +102,5 @@ void Graph::generate_edges_with_color()
     }
   }
 }
+
+} // namespace version0

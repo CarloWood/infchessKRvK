@@ -5,6 +5,8 @@
 #include <vector>
 #include <map>
 
+namespace version0 {
+
 class BlackToMoveData;
 
 class WhiteToMoveData : public Classification
@@ -30,3 +32,5 @@ class WhiteToMoveData : public Classification
   void print_on(std::ostream& os) const;
 #endif
 };
+
+} // namespace version0

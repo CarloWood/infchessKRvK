@@ -16,12 +16,9 @@ add_executable(infchess
   Color.cxx
   BlackToMoveData.cxx
   WhiteToMoveData.cxx
-  FEN.cxx
   Graph.cxx
-  KingMoves.cxx
-  RookMoves.cxx
-  Square.cxx
   Position.cxx
+  Square.cxx
   infchess.cxx
   parse_move.cxx
 )

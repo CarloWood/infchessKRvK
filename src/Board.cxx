@@ -9,6 +9,8 @@
 #include <iomanip>
 #include "debug.h"
 
+namespace version0 {
+
 // Implementation written and tested by Carlo Wood - 2025/07/19.
 bool Board::black_has_moves() const
 {
@@ -417,3 +419,5 @@ void Board::print_on(std::ostream& os) const
   os << "{black king:" << black_king_ << ", white king:" << white_king_ << ", white rook:" << white_rook_ << '}';
 }
 #endif
+
+} // namespace version0

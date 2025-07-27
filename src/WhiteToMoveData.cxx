@@ -3,6 +3,8 @@
 #include "BlackToMoveData.h"
 #include "debug.h"
 
+namespace version0 {
+
 void WhiteToMoveData::add_edges(white_to_move_nodes_type::iterator const& current_board, black_to_move_nodes_type::iterator const& succeeding_board)
 {
 //  DoutEntering(dc::notice, "WhiteToMoveData::add_edges(" << *current_board << ", " << *succeeding_board << ")");
@@ -54,3 +56,5 @@ void WhiteToMoveData::print_on(std::ostream& os) const
   Classification::print_on(os);
 }
 #endif
+
+} // namespace version0

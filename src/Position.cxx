@@ -5,6 +5,8 @@
 #include <iostream>
 #include "debug.h"
 
+namespace version0 {
+
 // Implementation written and tested by Carlo Wood - 2025/07/19.
 Position::Mate Position::determine_mate() const
 {
@@ -124,3 +126,5 @@ void Position::print_on(std::ostream& os) const
   os << static_cast<Board const&>(*this) << ", to move: " << to_move_;
 }
 #endif
+
+} // namespace version0

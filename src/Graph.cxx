@@ -1,8 +1,6 @@
 #include "sys.h"
 #include "Position.h"
 #include "Graph.h"
-#include "KingMoves.h"
-#include "RookMoves.h"
 #include "debug.h"
 
 #ifdef CWDEBUG
@@ -12,6 +10,8 @@ channel_ct adjacent("ADJACENT");
 channel_ct edge("EDGE");
 NAMESPACE_DEBUG_CHANNELS_END
 #endif
+
+namespace version0 {
 
 Graph::Graph(int board_size) : board_size_(board_size)
 {
@@ -338,3 +338,5 @@ void Graph::generate(int ply)
   }
 }
 #endif
+
+} // namespace version0

@@ -15,6 +15,8 @@ static constexpr int y = 1;
 
 } // namespace coordinates
 
+namespace version0 {
+
 class Square
 {
  private:
@@ -61,3 +63,5 @@ class Square
 };
 
 std::ostream& operator<<(std::ostream& os, Square const& square);
+
+} // namespace version0
