@@ -14,10 +14,11 @@ int main()
 {
   Debug(NAMESPACE_DEBUG::init());
 
-  constexpr int board_size = 12;
+  constexpr int board_size = version1::Board::board_size;
 
   // Construct the initial graph with all positions that are already mate.
-  version0::Graph graph(board_size);
+  version0::Graph graph0(board_size);
+  version1::Graph graph1;
 
   int total_positions;
   int draw_positions = 0;
@@ -26,13 +27,14 @@ int main()
   int stalemate_positions = 0;
 
   // Generate all possible positions.
-  graph.classify();
+  graph0.classify();
+  graph1.classify();
 
   std::vector<version0::Graph::black_to_move_nodes_type::iterator> already_mate;
 
   // Black to move positions.
   {
-    version0::Graph::black_to_move_nodes_type& black_to_move_map = graph.black_to_move_map();
+    version0::Graph::black_to_move_nodes_type& black_to_move_map = graph0.black_to_move_map();
     total_positions = black_to_move_map.size();
     for (version0::Graph::black_to_move_nodes_type::iterator current_position = black_to_move_map.begin();
         current_position != black_to_move_map.end(); ++current_position)
@@ -55,7 +57,7 @@ int main()
   }
   // White to move positions.
   {
-    version0::Graph::white_to_move_nodes_type& white_to_move_map = graph.white_to_move_map();
+    version0::Graph::white_to_move_nodes_type& white_to_move_map = graph0.white_to_move_map();
     total_positions += white_to_move_map.size();
     for (version0::Graph::white_to_move_nodes_type::iterator current_position = white_to_move_map.begin();
         current_position != white_to_move_map.end(); ++current_position)
@@ -74,8 +76,10 @@ int main()
   std::cout << "Mate positions: " << mate_positions << std::endl;
   std::cout << "Stalemate positions: " << stalemate_positions << std::endl;
 
+  ASSERT(graph0 == graph1);
+
   // Generate links for all legal moves.
-  graph.generate_edges();
+  graph0.generate_edges();
 
   // Run over all positions that are already mate (as per the classification)
   // and mark all position that can reach those as mate in 1 ply.
@@ -120,12 +124,12 @@ int main()
 
   // Get a pointer to the initial position.
 #if 0
-  version0::Graph::white_to_move_nodes_type::const_iterator initial_position = graph.white_to_move_map().begin();
+  version0::Graph::white_to_move_nodes_type::const_iterator initial_position = graph0.white_to_move_map().begin();
   while (initial_position->first.black_king() == initial_position->first.white_rook())
     ++initial_position;
 #else
   version0::Board b(board_size, {1, 5}, {4, 2}, {4, 0});
-  auto initial_position = graph.white_to_move_map().find(b);
+  auto initial_position = graph0.white_to_move_map().find(b);
 #endif
   version0::Board const* board = &initial_position->first;
 
@@ -286,7 +290,7 @@ int main()
   // Generate all positions that are mate in 1, 2, ..., `ply` moves.
   int max_ply = 30;
   //Debug(libcwd::libcw_do.off());
-  graph.generate(max_ply);
+  graph0.generate(max_ply);
   //Debug(libcwd::libcw_do.on());
 
   // All squares that a rook can stand on, given the squares of the kings and the number of moves.
@@ -302,7 +306,7 @@ int main()
   {
     kings_to_rooks_map_type& kings_to_rooks_map = ply_to_map[ply];      // The map to use.
     // ...run over all positions that are mate in ply moves.
-    for (version0::Graph::nodes_type::const_iterator const& mate_in_ply_position : graph.mate_in_ply(ply))
+    for (version0::Graph::nodes_type::const_iterator const& mate_in_ply_position : graph0.mate_in_ply(ply))
     {
       // Create key containing the kings positions.
       kings_to_rooks_map_type::key_type key{
