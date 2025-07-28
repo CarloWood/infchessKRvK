@@ -11,13 +11,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(infchess
-  Board.cxx
-  Classification.cxx
+  Board0.cxx
+  Board1.cxx
+  Classification0.cxx
+  Classification1.cxx
   Color.cxx
-  BlackToMoveData.cxx
-  WhiteToMoveData.cxx
-  Graph.cxx
-  Square.cxx
+  BlackToMoveData0.cxx
+  BlackToMoveData1.cxx
+  WhiteToMoveData0.cxx
+  WhiteToMoveData1.cxx
+  Graph0.cxx
+  Graph1.cxx
+  Square0.cxx
+  Square1.cxx
   infchess.cxx
   parse_move.cxx
 )
