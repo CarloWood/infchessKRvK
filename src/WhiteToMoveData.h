@@ -23,6 +23,7 @@ class WhiteToMoveData : public Classification
 
  public:
   std::vector<black_to_move_nodes_type::const_iterator> const& child_positions() const { return child_positions_; }
+  std::vector<black_to_move_nodes_type::iterator> const& parent_positions() const { return parent_positions_; }
 
   void add_edges(white_to_move_nodes_type::iterator const& current_board, black_to_move_nodes_type::iterator const& succeeding_board);
   void set_minimum_ply_on_parents(std::vector<black_to_move_nodes_type::iterator>& parents);
@@ -52,6 +53,7 @@ class WhiteToMoveData : public Classification
 
  public:
   std::vector<black_to_move_nodes_type::const_iterator> const& child_positions() const { return child_positions_; }
+  std::vector<black_to_move_nodes_type::iterator> const& parent_positions() const { return parent_positions_; }
 
   void add_edges(white_to_move_nodes_type::iterator const& current_board, black_to_move_nodes_type::iterator const& succeeding_board);
   void set_minimum_ply_on_parents(std::vector<black_to_move_nodes_type::iterator>& parents);

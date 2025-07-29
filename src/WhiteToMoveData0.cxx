@@ -21,8 +21,6 @@ void WhiteToMoveData::add_edges(white_to_move_nodes_type::iterator const& curren
 
 void WhiteToMoveData::set_minimum_ply_on_parents(std::vector<black_to_move_nodes_type::iterator>& parents)
 {
-  DoutEntering(dc::notice, "WhiteToMoveData::set_minimum_ply_on_parents(" << min_ply << ", ...)");
-
   // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_moves_` detemined.
   ASSERT(mate_in_moves_ != -1);
   // Any parent position can not be mate in less than `mate_in_moves_ + 1` ply, because in the parent

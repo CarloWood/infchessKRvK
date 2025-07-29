@@ -20,22 +20,29 @@ int main()
   version0::Graph graph0(board_size);
   version1::Graph graph1;
 
-  int total_positions;
-  int draw_positions = 0;
-  int black_in_check_positions = 0;
-  int mate_positions = 0;
-  int stalemate_positions = 0;
+  int total_positions0;
+  int draw_positions0 = 0;
+  int black_in_check_positions0 = 0;
+  int mate_positions0 = 0;
+  int stalemate_positions0 = 0;
+
+  int total_positions1;
+  int draw_positions1 = 0;
+  int black_in_check_positions1 = 0;
+  int mate_positions1 = 0;
+  int stalemate_positions1 = 0;
 
   // Generate all possible positions.
   graph0.classify();
   graph1.classify();
 
-  std::vector<version0::Graph::black_to_move_nodes_type::iterator> already_mate;
+  std::vector<version0::Graph::black_to_move_nodes_type::iterator> already_mate0;
+  std::vector<version1::Graph::black_to_move_nodes_type::iterator> already_mate1;
 
   // Black to move positions.
   {
     version0::Graph::black_to_move_nodes_type& black_to_move_map = graph0.black_to_move_map();
-    total_positions = black_to_move_map.size();
+    total_positions0 = black_to_move_map.size();
     for (version0::Graph::black_to_move_nodes_type::iterator current_position = black_to_move_map.begin();
         current_position != black_to_move_map.end(); ++current_position)
     {
@@ -43,22 +50,22 @@ int main()
       version0::BlackToMoveData const& data = current_position->second;
       version0::Classification const& pc = data;
       if (pc.is_draw())
-        ++draw_positions;
+        ++draw_positions0;
       if (pc.is_check())
-        ++black_in_check_positions;
+        ++black_in_check_positions0;
       if (pc.is_mate())
       {
-        ++mate_positions;
-        already_mate.push_back(current_position);
+        ++mate_positions0;
+        already_mate0.push_back(current_position);
       }
       if (pc.is_stalemate())
-        ++stalemate_positions;
+        ++stalemate_positions0;
     }
   }
   // White to move positions.
   {
     version0::Graph::white_to_move_nodes_type& white_to_move_map = graph0.white_to_move_map();
-    total_positions += white_to_move_map.size();
+    total_positions0 += white_to_move_map.size();
     for (version0::Graph::white_to_move_nodes_type::iterator current_position = white_to_move_map.begin();
         current_position != white_to_move_map.end(); ++current_position)
     {
@@ -66,39 +73,94 @@ int main()
       version0::WhiteToMoveData const& data = current_position->second;
       version0::Classification const& pc = data;
       if (pc.is_draw())
-        ++draw_positions;
+        ++draw_positions0;
     }
   }
 
-  std::cout << "Total legal positions: " << total_positions << std::endl;
-  std::cout << "Draw positions: " << draw_positions << std::endl;
-  std::cout << "Black in check positions: " << black_in_check_positions << std::endl;
-  std::cout << "Mate positions: " << mate_positions << std::endl;
-  std::cout << "Stalemate positions: " << stalemate_positions << std::endl;
+  std::cout << "Version 0:" << std::endl;
+  std::cout << "Total legal positions: " << total_positions0 << std::endl;
+  std::cout << "Draw positions: " << draw_positions0 << std::endl;
+  std::cout << "Black in check positions: " << black_in_check_positions0 << std::endl;
+  std::cout << "Mate positions: " << mate_positions0 << std::endl;
+  std::cout << "Stalemate positions: " << stalemate_positions0 << std::endl;
 
-  ASSERT(graph0 == graph1);
+  // Black to move positions.
+  {
+    version1::Graph::black_to_move_nodes_type& black_to_move_map = graph1.black_to_move_map();
+    total_positions1 = black_to_move_map.size();
+    for (version1::Graph::black_to_move_nodes_type::iterator current_position = black_to_move_map.begin();
+        current_position != black_to_move_map.end(); ++current_position)
+    {
+      version1::Board const& current_board = current_position->first;
+      version1::BlackToMoveData const& data = current_position->second;
+      version1::Classification const& pc = data;
+      if (pc.is_draw())
+        ++draw_positions1;
+      if (pc.is_check())
+        ++black_in_check_positions1;
+      if (pc.is_mate())
+      {
+        ++mate_positions1;
+        already_mate1.push_back(current_position);
+      }
+      if (pc.is_stalemate())
+        ++stalemate_positions1;
+    }
+  }
+  // White to move positions.
+  {
+    version1::Graph::white_to_move_nodes_type& white_to_move_map = graph1.white_to_move_map();
+    total_positions1 += white_to_move_map.size();
+    for (version1::Graph::white_to_move_nodes_type::iterator current_position = white_to_move_map.begin();
+        current_position != white_to_move_map.end(); ++current_position)
+    {
+      version1::Board const& current_board = current_position->first;
+      version1::WhiteToMoveData const& data = current_position->second;
+      version1::Classification const& pc = data;
+      if (pc.is_draw())
+        ++draw_positions1;
+    }
+  }
+
+  std::cout << "Version 1:" << std::endl;
+  std::cout << "Total legal positions: " << total_positions1 << std::endl;
+  std::cout << "Draw positions: " << draw_positions1 << std::endl;
+  std::cout << "Black in check positions: " << black_in_check_positions1 << std::endl;
+  std::cout << "Mate positions: " << mate_positions1 << std::endl;
+  std::cout << "Stalemate positions: " << stalemate_positions1 << std::endl;
 
   // Generate links for all legal moves.
   graph0.generate_edges();
+  graph1.generate_edges();
 
   // Run over all positions that are already mate (as per the classification)
   // and mark all position that can reach those as mate in 1 ply.
-  std::vector<version0::Graph::white_to_move_nodes_type::iterator> white_to_move_parents;
-  for (version0::Graph::black_to_move_nodes_type::iterator iter : already_mate)
+  std::vector<version0::Graph::white_to_move_nodes_type::iterator> white_to_move_parents0;
+  for (version0::Graph::black_to_move_nodes_type::iterator iter : already_mate0)
   {
     version0::BlackToMoveData& black_to_move_data = iter->second;
     black_to_move_data.set_mate_in_ply(0);
-    black_to_move_data.set_maximum_ply_on_parents(white_to_move_parents);
+    black_to_move_data.set_maximum_ply_on_parents(white_to_move_parents0);
+  }
+
+  // Run over all positions that are already mate (as per the classification)
+  // and mark all position that can reach those as mate in 1 ply.
+  std::vector<version1::Graph::white_to_move_nodes_type::iterator> white_to_move_parents1;
+  for (version1::Graph::black_to_move_nodes_type::iterator iter : already_mate1)
+  {
+    version1::BlackToMoveData& black_to_move_data = iter->second;
+    black_to_move_data.set_mate_in_ply(0);
+    black_to_move_data.set_maximum_ply_on_parents(white_to_move_parents1);
   }
 
   {
     // white_to_move_parents are mate in `ply` moves.
     int ply = 1;
-    while (!white_to_move_parents.empty())
+    while (!white_to_move_parents0.empty())
     {
       std::vector<version0::Graph::black_to_move_nodes_type::iterator> black_to_move_parents;
       // Run over all positions that are mate in an odd number of ply.
-      for (version0::Graph::white_to_move_nodes_type::iterator white_to_move_board_data_iter : white_to_move_parents)
+      for (version0::Graph::white_to_move_nodes_type::iterator white_to_move_board_data_iter : white_to_move_parents0)
       {
         version0::WhiteToMoveData& white_to_move_data = white_to_move_board_data_iter->second;
         ASSERT(white_to_move_data.ply() == ply);
@@ -109,43 +171,76 @@ int main()
       if (black_to_move_parents.empty())
         break;
 
-      white_to_move_parents.clear();
+      white_to_move_parents0.clear();
       // Run over all positions that are mate in an even number of ply.
       for (version0::Graph::black_to_move_nodes_type::iterator board_data_iter : black_to_move_parents)
       {
         version0::BlackToMoveData& data = board_data_iter->second;
         ASSERT(data.ply() == ply);
-        data.set_maximum_ply_on_parents(white_to_move_parents);
+        data.set_maximum_ply_on_parents(white_to_move_parents0);
       }
       ++ply;
     }
     Dout(dc::notice, "ply = " << ply);
   }
 
+  {
+    // white_to_move_parents are mate in `ply` moves.
+    int ply = 1;
+    while (!white_to_move_parents1.empty())
+    {
+      std::vector<version1::Graph::black_to_move_nodes_type::iterator> black_to_move_parents;
+      // Run over all positions that are mate in an odd number of ply.
+      for (version1::Graph::white_to_move_nodes_type::iterator white_to_move_board_data_iter : white_to_move_parents1)
+      {
+        version1::WhiteToMoveData& white_to_move_data = white_to_move_board_data_iter->second;
+        ASSERT(white_to_move_data.ply() == ply);
+        white_to_move_data.set_minimum_ply_on_parents(black_to_move_parents);
+      }
+      ++ply;
+
+      if (black_to_move_parents.empty())
+        break;
+
+      white_to_move_parents1.clear();
+      // Run over all positions that are mate in an even number of ply.
+      for (version1::Graph::black_to_move_nodes_type::iterator board_data_iter : black_to_move_parents)
+      {
+        version1::BlackToMoveData& data = board_data_iter->second;
+        ASSERT(data.ply() == ply);
+        data.set_maximum_ply_on_parents(white_to_move_parents1);
+      }
+      ++ply;
+    }
+    Dout(dc::notice, "ply = " << ply);
+  }
+
+  ASSERT(graph0 == graph1);
+
   // Get a pointer to the initial position.
 #if 0
-  version0::Graph::white_to_move_nodes_type::const_iterator initial_position = graph0.white_to_move_map().begin();
+  version1::Graph::white_to_move_nodes_type::const_iterator initial_position = graph1.white_to_move_map().begin();
   while (initial_position->first.black_king() == initial_position->first.white_rook())
     ++initial_position;
 #else
-  version0::Board b(board_size, {1, 5}, {4, 2}, {4, 0});
-  auto initial_position = graph0.white_to_move_map().find(b);
+  version1::Board b({1, 4}, {4, 2}, {4, 0});
+  auto initial_position = graph1.white_to_move_map().find(b);
 #endif
-  version0::Board const* board = &initial_position->first;
+  version1::Board const* board = &initial_position->first;
 
   // Define variants for a single node iterator, and a vector of node iterators.
   using NodeIterator0 = std::variant<
-    version0::Graph::black_to_move_nodes_type::const_iterator,
-    version0::Graph::white_to_move_nodes_type::const_iterator
+    version1::Graph::black_to_move_nodes_type::const_iterator,
+    version1::Graph::white_to_move_nodes_type::const_iterator
   >;
 
   // Define lambda's for accessing this variants.
   auto get_ply = [](auto&& it) { return it->second.ply(); };
-  auto get_classification = [](auto&& it) -> version0::Classification const& { return it->second; };
+  auto get_classification = [](auto&& it) -> version1::Classification const& { return it->second; };
 
   using ChildPositions0 = std::variant<
-    std::vector<version0::Graph::black_to_move_nodes_type::const_iterator>,
-    std::vector<version0::Graph::white_to_move_nodes_type::const_iterator>
+    std::vector<version1::Graph::black_to_move_nodes_type::const_iterator>,
+    std::vector<version1::Graph::white_to_move_nodes_type::const_iterator>
   >;
 
   // Define lambda's for accessing this variants.
@@ -177,7 +272,7 @@ int main()
 
     if (to_move == black)
     {
-      auto const& cps = std::get<std::vector<version0::Graph::white_to_move_nodes_type::const_iterator>>(child_positions);
+      auto const& cps = std::get<std::vector<version1::Graph::white_to_move_nodes_type::const_iterator>>(child_positions);
       unsigned int max_ply = 0;
       for (auto&& child : cps)
       {
@@ -254,7 +349,7 @@ int main()
     for (;;)
     {
       auto [piece, x, y] = parse_move(to_move, board_size);
-      version0::Board new_board(*board);
+      version1::Board new_board(*board);
       if (to_move == white)
       {
         if (piece == 'R')

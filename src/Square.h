@@ -76,7 +76,7 @@ class Square
 
  public:
   Square() = default;
-  Square(int x, int y) : coordinates_{x, y} { }
+  constexpr Square(int x, int y) : coordinates_{x, y} { }
 
   static constexpr std::pair<int, int> default_coordinates()
   {

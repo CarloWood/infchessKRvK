@@ -7,6 +7,7 @@
 #include <string_view>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include "debug.h"
 
 namespace version1 {
@@ -140,8 +141,8 @@ bool Board::determine_check() const
   auto [bk, wk, wr] = Board::abbreviations();
 
   // Determine if the rook is on the same file and/or row as the black king.
-  bool same_file = bk[x] == white_rook_[x];
-  bool same_row  = bk[y] == white_rook_[y];
+  bool same_file = bk[x] == wr[x];
+  bool same_row  = bk[y] == wr[y];
 
   // If the both are true, then the rook was captured and there is no check.
   // If both are false, then the black king and white rook are not on one line
@@ -170,16 +171,16 @@ bool Board::determine_legal(Color to_move) const
   using namespace coordinates;
 
   // Kings can't be next to eachother, or occupy the same square.
-  if (black_king_.is_next_to(white_king_))
+  if (kings_next_to_eachother())
     return false;
 
   // The white rook and white king can't occupy the same square.
-  if (white_rook_ == white_king_)
+  if (white_rook() == white_king())
     return false;
 
   // If the white rook and the black king occupy the same square,
   // black just took the rook if white is to play, otherwise the position is illegal.
-  if (white_rook_ == black_king_)
+  if (white_rook() == black_king())
     return to_move == white;            // Not illegal if white is to play.
 
   // The remaining positions are all legal if it is black to play.
@@ -213,7 +214,7 @@ bool Board::determine_draw(Color to_move) const
 
   if (to_move == white)
     // The position is only draw if the rook was captured.
-    return black_king_ == white_rook_;
+    return black_king() == white_rook();
 
   // The position is a draw if it is stalemate.
   Mate mate = determine_mate(to_move);
@@ -261,7 +262,8 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
 {
   std::vector<Board> result;
 
-  if (white_rook_ == black_king_)
+  auto [bk, wk, wr] = abbreviations();
+  if (wr == bk)
   {
     // With white to move, do not generate any moves once the rook is captured.
   }
@@ -269,12 +271,18 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
   {
     using namespace coordinates;
     Board succeeding_board(*this);
-    int cbkx = black_king_[x];
-    int cbky = black_king_[y];
-    for (int dx = -1; dx <= 1; ++dx)
+    int const cbkx = bk[x];
+    int const cbky = bk[y];
+    int const dx_min = std::max(-1, -cbkx);
+    int const dx_max = std::min(1U, Board::board_size - 1 - cbkx);
+    int const dy_min = std::max(-1, -cbky);
+    int const dy_max = std::min(1U, Board::board_size - 1 - cbky);
+    for (int dx = dx_min; dx <= dx_max; ++dx)
     {
-      for (int dy = -1; dy <= 1; dy += dx == 0 ? 2 : 1)
+      for (int dy = dy_min; dy <= dy_max; ++dy)
       {
+        if (dx == 0 && dy == 0)
+          continue;
         succeeding_board.set_black_king_square({cbkx + dx, cbky + dy});
         result.push_back(succeeding_board);
       }
@@ -283,14 +291,20 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
   else
   {
     using namespace coordinates;
-    int const cwkx = white_king_[x];
-    int const cwky = white_king_[y];
+    int const cwkx = wk[x];
+    int const cwky = wk[y];
+    int const dx_min = std::max(-1, -cwkx);
+    int const dx_max = std::min(1U, Board::board_size - 1 - cwkx);
+    int const dy_min = std::max(-1, -cwky);
+    int const dy_max = std::min(1U, Board::board_size - 1 - cwky);
     {
       Board succeeding_board(*this);
-      for (int dx = -1; dx <= 1; ++dx)
+      for (int dx = dx_min; dx <= dx_max; ++dx)
       {
-        for (int dy = -1; dy <= 1; dy += dx == 0 ? 2 : 1)
+        for (int dy = dy_min; dy <= dy_max; ++dy)
         {
+          if (dx == 0 && dy == 0)
+            continue;
           succeeding_board.set_white_king_square({cwkx + dx, cwky + dy});
           result.push_back(succeeding_board);
         }
@@ -298,13 +312,14 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
     }
     {
       Board succeeding_board(*this);
-      int const cwrx = white_rook_[x];
-      int const cwry = white_rook_[y];
+      int const cwrx = wr[x];
+      int const cwry = wr[y];
       for (int horvert = 0; horvert < 2; ++horvert)
       {
         for (int dir = -1; dir <= 1; dir += 2)
         {
-          for (int dist = 1; dist < Board::board_size; ++dist)
+          int end = dir == -1 ? -1 : Board::board_size;
+          for (int dist = 1; dist < std::abs(end - (horvert == 0 ? cwrx : cwry)); ++dist)
           {
             int wrx = cwrx;
             int wry = cwry;
@@ -422,11 +437,12 @@ void Board::utf8art(std::ostream& os, std::function<Figure (Square)> select_figu
 void Board::utf8art(std::ostream& os) const
 {
   Board::utf8art(os, [this](Square pos){
-    if (black_king_ == pos)
+    square_coordinates_type sc = Board::to_square_coordinates(pos);
+    if (black_king() == sc)
       return Figure::black_king;
-    else if (white_king_ == pos)
+    else if (white_king() == sc)
       return Figure::white_king;
-    else if (white_rook_ == pos)
+    else if (white_rook() == sc)
       return Figure::white_rook;
     else
       return Figure::none;
@@ -467,12 +483,13 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
     for (int x = 0; x < Board::board_size; ++x)
     {
       Square pos{x, y};
+      square_coordinates_type square_coordinates = Board::to_square_coordinates(pos);
 
-      if (black_king_ == pos)
+      if (black_king() == square_coordinates)
         print_king_to(oss, black);
-      else if (white_king_ == pos)
+      else if (white_king() == square_coordinates)
         print_king_to(oss, white);
-      else if (white_rook_ == pos)
+      else if (white_rook() == square_coordinates)
         print_rook_to(oss);
       else
         print_none_to(oss, (x + y) % 2 == 1 ? black : white);
@@ -500,7 +517,10 @@ std::ostream& operator<<(std::ostream& os, Board::Mate mate)
 
 void Board::print_on(std::ostream& os) const
 {
-  os << "{black king:" << black_king_ << ", white king:" << white_king_ << ", white rook:" << white_rook_ << '}';
+  os <<
+    "{black king:" << to_square(black_king()) <<
+   ", white king:" << to_square(white_king()) <<
+   ", white rook:" << to_square(white_rook()) << '}';
 }
 #endif
 

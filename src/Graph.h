@@ -83,19 +83,28 @@ class Graph
 template<color_type color>
 void Graph::generate_edges_with_color()
 {
+  DoutEntering(dc::notice, "version0::Graph::generate_edges_with_color<" << color << ">()");
   constexpr Color to_move(color);
   // The map containing all positions with `color` to move.
   auto& color_to_move_map = map_with_to_move<color>();
   // The map containing all positions with the other color to move.
   auto& other_to_move_map = map_with_to_move<to_move.opponent().color_>();
+  Dout(dc::notice, "Number of positions in color_to_move_map: " << color_to_move_map.size());
+  Dout(dc::notice, "Number of positions in other_to_move_map: " << other_to_move_map.size());
 
+  Dout(dc::notice, "Looping over all positions in color_to_move_map:");
+  NAMESPACE_DEBUG::Mark mark;
   for (auto current_position = color_to_move_map.begin(); current_position != color_to_move_map.end(); ++current_position)
   {
     Board const& current_board = current_position->first;
     auto& data = current_position->second;
+    Dout(dc::notice, "current_board = " << current_board << ", with data = " << data);
     std::vector<Board> succeeding_boards = current_board.get_succeeding_boards(to_move);
+    Dout(dc::notice, "current_board.get_succeeding_boards(" << to_move << ") returned " << succeeding_boards.size() << " positions:");
+    NAMESPACE_DEBUG::Mark mark2;
     for (Board const& succeeding_board : succeeding_boards)
     {
+      Dout(dc::notice, succeeding_board);
       auto child_position = other_to_move_map.find(succeeding_board);
       if (child_position == other_to_move_map.end())
         continue;     // Non-existing boards are illegal.
@@ -176,19 +185,28 @@ class Graph
 template<color_type color>
 void Graph::generate_edges_with_color()
 {
+  DoutEntering(dc::notice, "version1::Graph::generate_edges_with_color<" << color << ">()");
   constexpr Color to_move(color);
   // The map containing all positions with `color` to move.
   auto& color_to_move_map = map_with_to_move<color>();
   // The map containing all positions with the other color to move.
   auto& other_to_move_map = map_with_to_move<to_move.opponent().color_>();
+  Dout(dc::notice, "Number of positions in color_to_move_map: " << color_to_move_map.size());
+  Dout(dc::notice, "Number of positions in other_to_move_map: " << other_to_move_map.size());
 
+  Dout(dc::notice, "Looping over all positions in color_to_move_map:");
+  NAMESPACE_DEBUG::Mark mark;
   for (auto current_position = color_to_move_map.begin(); current_position != color_to_move_map.end(); ++current_position)
   {
     Board const& current_board = current_position->first;
     auto& data = current_position->second;
+    Dout(dc::notice, "current_board = " << current_board << ", with data = " << data);
     std::vector<Board> succeeding_boards = current_board.get_succeeding_boards(to_move);
+    Dout(dc::notice, "current_board.get_succeeding_boards(" << to_move << ") returned " << succeeding_boards.size() << " positions:");
+    NAMESPACE_DEBUG::Mark mark2;
     for (Board const& succeeding_board : succeeding_boards)
     {
+      Dout(dc::notice, succeeding_board);
       auto child_position = other_to_move_map.find(succeeding_board);
       if (child_position == other_to_move_map.end())
         continue;     // Non-existing boards are illegal.
