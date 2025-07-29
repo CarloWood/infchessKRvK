@@ -7,7 +7,7 @@ namespace version1 {
 
 void WhiteToMoveData::add_edges(white_to_move_nodes_type::iterator const& current_board, black_to_move_nodes_type::iterator const& succeeding_board)
 {
-  DoutEntering(dc::notice, "WhiteToMoveData::add_edges(" << *current_board << ", " << *succeeding_board << ")");
+  //DoutEntering(dc::notice, "WhiteToMoveData::add_edges(" << *current_board << ", " << *succeeding_board << ")");
 
   // current_board must point the map containing this Board/WhiteToMoveData pair.
   ASSERT(&current_board->second == this);

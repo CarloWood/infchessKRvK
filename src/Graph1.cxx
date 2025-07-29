@@ -56,7 +56,7 @@ void Graph::classify()
 
 void Graph::generate_edges()
 {
-  DoutEntering(dc::notice, "version1::Graph::generate_edges()");
+//  DoutEntering(dc::notice, "version1::Graph::generate_edges()");
   generate_edges_with_color<black>();
   generate_edges_with_color<white>();
 }
