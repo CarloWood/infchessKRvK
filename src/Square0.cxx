@@ -1,5 +1,5 @@
 #include "sys.h"
-#include "Square.h"
+#include "Square0.h"
 #include <iostream>
 
 namespace version0 {

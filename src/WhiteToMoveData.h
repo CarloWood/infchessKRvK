@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Board.h"
+#include "Board0.h"
+#include "Board1.h"
 #include "Classification.h"
 #include <vector>
 #include <map>

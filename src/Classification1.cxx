@@ -1,6 +1,7 @@
 #include "sys.h"
 #include "Classification.h"
-#include "Board.h"
+#include "Board1.h"
+#include "coordinates.h"
 #include <iostream>
 
 namespace version1 {

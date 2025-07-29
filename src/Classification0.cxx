@@ -1,6 +1,6 @@
 #include "sys.h"
 #include "Classification.h"
-#include "Board.h"
+#include "Board0.h"
 #include <iostream>
 
 namespace version0 {

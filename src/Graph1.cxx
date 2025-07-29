@@ -1,5 +1,6 @@
 #include "sys.h"
 #include "Graph.h"
+#include "Square1.h"
 #include "debug.h"
 
 namespace version1 {

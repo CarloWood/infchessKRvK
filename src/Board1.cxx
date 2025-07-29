@@ -1,5 +1,6 @@
 #include "sys.h"
-#include "Board.h"
+#include "Board1.h"
+#include "Square1.h"
 #include "Color.h"
 #include "utils/print_using.h"
 #include <utility>
@@ -11,6 +12,11 @@
 #include "debug.h"
 
 namespace version1 {
+
+std::tuple<Square, Square, Square> Board::abbreviations() const
+{
+  return {black_king(), white_king(), white_rook()};
+}
 
 // Implementation written and tested by Carlo Wood - 2025/07/19.
 bool Board::black_has_moves() const
@@ -437,7 +443,7 @@ void Board::utf8art(std::ostream& os, std::function<Figure (Square)> select_figu
 void Board::utf8art(std::ostream& os) const
 {
   Board::utf8art(os, [this](Square pos){
-    square_coordinates_type sc = Board::to_square_coordinates(pos);
+    Square::coordinates_type sc = pos.coordinates();
     if (black_king() == sc)
       return Figure::black_king;
     else if (white_king() == sc)
@@ -482,8 +488,7 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
     // Print left to right.
     for (int x = 0; x < Board::board_size; ++x)
     {
-      Square pos{x, y};
-      square_coordinates_type square_coordinates = Board::to_square_coordinates(pos);
+      SquareCompact square_coordinates(x, y);
 
       if (black_king() == square_coordinates)
         print_king_to(oss, black);
@@ -518,9 +523,9 @@ std::ostream& operator<<(std::ostream& os, Board::Mate mate)
 void Board::print_on(std::ostream& os) const
 {
   os <<
-    "{black king:" << to_square(black_king()) <<
-   ", white king:" << to_square(white_king()) <<
-   ", white rook:" << to_square(white_rook()) << '}';
+    "{black king:" << Square{black_king()} <<
+   ", white king:" << Square{white_king()} <<
+   ", white rook:" << Square{white_rook()} << '}';
 }
 #endif
 
