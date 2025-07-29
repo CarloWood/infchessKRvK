@@ -1,7 +1,7 @@
 #include "sys.h"
 #include "Graph.h"
 //#include "TwoKings.h"
-//#include "Box.h"
+#include "Box.h"
 #include "parse_move.h"
 #include <vector>
 #include <iostream>
@@ -218,7 +218,7 @@ int main()
   ASSERT(graph0 == graph1);
 
   // Get a pointer to the initial position.
-#if 0
+#if 1
   version1::Graph::white_to_move_nodes_type::const_iterator initial_position = graph1.white_to_move_map().begin();
   while (initial_position->first.black_king() == initial_position->first.white_rook())
     ++initial_position;
@@ -289,7 +289,7 @@ int main()
 #if 0
     if (ply == -1 || std::visit(get_empty, child_positions))
     {
-      Classification const& classification = std::visit(get_classification, iter);
+      version1::Classification const& classification = std::visit(get_classification, iter);
       if (classification.is_mate())
       {
         std::cout << "You won!" << std::endl;
@@ -317,8 +317,8 @@ int main()
       boxes.back().stream() << "\n" << i << ":\n";
       auto get_board = [i](auto&& child_positions) { return child_positions[i]->first; };
       std::visit(get_board, child_positions).utf8art(boxes.back().stream());
-      auto get_classification_i = [i](auto&& child_positions) -> Classification const& { return child_positions[i]->second; };
-      Classification const& classification = std::visit(get_classification_i, child_positions);
+      auto get_classification_i = [i](auto&& child_positions) -> version1::Classification const& { return child_positions[i]->second; };
+      version1::Classification const& classification = std::visit(get_classification_i, child_positions);
       if (classification.is_stalemate())
         boxes.back().stream() << "Stalemate";
       else if (classification.ply() == -1)
@@ -380,64 +380,4 @@ int main()
     board = std::visit([](auto&& it) { return &it->first; }, iter);
     to_move = to_move.opponent();
   }
-
-#if 0
-  // Generate all positions that are mate in 1, 2, ..., `ply` moves.
-  int max_ply = 30;
-  //Debug(libcwd::libcw_do.off());
-  graph0.generate(max_ply);
-  //Debug(libcwd::libcw_do.on());
-
-  // All squares that a rook can stand on, given the squares of the kings and the number of moves.
-  using rook_positions_type = std::vector<Square>;
-  // A map with rook positions as function of kings positions, given the number of moves.
-  using kings_to_rooks_map_type = std::map<TwoKings, rook_positions_type>;
-  // A vector with a kings_to_rooks_type maps for each given number of moves.
-  std::vector<kings_to_rooks_map_type> ply_to_map(max_ply + 1);
-
-  // For a given number of moves that a position must be mate...
-  Dout(dc::notice, "The size of ply_to_map is " << ply_to_map.size());
-  for (int ply = 4; ply < ply_to_map.size(); ++ply)
-  {
-    kings_to_rooks_map_type& kings_to_rooks_map = ply_to_map[ply];      // The map to use.
-    // ...run over all positions that are mate in ply moves.
-    for (version0::Graph::nodes_type::const_iterator const& mate_in_ply_position : graph0.mate_in_ply(ply))
-    {
-      // Create key containing the kings positions.
-      kings_to_rooks_map_type::key_type key{
-        mate_in_ply_position->first.black_king(),
-        mate_in_ply_position->first.white_king()
-      };
-      // Get the relevant rook_positions_type.
-      rook_positions_type& rook_positions = kings_to_rooks_map[key];
-      // Add the square that the rook is on.
-      rook_positions.push_back(mate_in_ply_position->first.white_rook());
-    }
-
-    for (kings_to_rooks_map_type::value_type& value : kings_to_rooks_map)
-    {
-      TwoKings const& two_kings = value.first;
-      rook_positions_type const& rook_positions = value.second;
-
-      Dout(dc::notice, "Black king: " << two_kings.bk() << ", white king: " << two_kings.wk() << ", ply: " << ply);
-      version0::Board::utf8art(std::cout, board_size, [&](Square pos) -> version0::Board::Figure {
-        if (pos == two_kings.bk())
-          return version0::Board::Figure::black_king;
-        else if (pos == two_kings.wk())
-          return version0::Board::Figure::white_king;
-        else
-        {
-          for (int i = 0; i < rook_positions.size(); ++i)
-            if (pos == rook_positions[i])
-              return version0::Board::Figure::white_rook;
-        }
-        return version0::Board::Figure::none;
-      });
-      std::cout << "Mate in " << ply << " ply";
-      if (ply % 2 == 0)
-        std::cout << " (black to move)";
-      std::cout << std::endl;
-    }
-  }
-#endif
 }
