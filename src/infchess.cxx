@@ -1,6 +1,5 @@
 #include "sys.h"
 #include "Graph.h"
-//#include "TwoKings.h"
 #include "Box.h"
 #include "parse_move.h"
 #include <vector>
