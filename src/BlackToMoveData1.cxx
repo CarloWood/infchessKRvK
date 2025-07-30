@@ -1,22 +1,29 @@
 #include "sys.h"
-#include "BlackToMoveData.h"
-#include "WhiteToMoveData.h"
+#include "BlackToMoveData1.h"
+#include "WhiteToMoveData1.h"
 #include "debug.h"
+
+#if CW_DEBUG
+#include "Graph.h"
+#endif
 
 namespace version1 {
 
-void BlackToMoveData::add_edges(black_to_move_nodes_type::iterator const& current_board, white_to_move_nodes_type::iterator const& succeeding_board)
+void BlackToMoveData::add_edges(black_to_move_nodes_type::iterator const& current_data, white_to_move_nodes_type::iterator const& succeeding_data COMMA_DEBUG_ONLY(Graph const& graph))
 {
-//  DoutEntering(dc::notice, "BlackToMoveData::add_edges(" << *current_board << ", " << *succeeding_board << ")");
+//  DoutEntering(dc::notice, "BlackToMoveData::add_edges(" <<
+//      *current_data << "[" << Board{graph.get_index(current_data)} << "], " <<
+//      *succeeding_data << "[" << Board{graph.get_index(succeeding_data)} << "])");
 
-  // current_board must point the map containing this Board/BlackToMoveData pair.
-  ASSERT(&current_board->second == this);
+  // current_data must point the map containing this Board/BlackToMoveData pair.
+  ASSERT(&*current_data == this);
   // Don't add the same edge twice.
-  ASSERT(std::find(child_positions_.begin(), child_positions_.end(), succeeding_board) == child_positions_.end());
-  child_positions_.push_back(succeeding_board);
+  ASSERT(std::find(child_positions_.begin(), child_positions_.end(), succeeding_data) == child_positions_.end());
+  child_positions_.push_back(succeeding_data);
   // Make sure we didn't add this edge before.
-  ASSERT(std::find(succeeding_board->second.parent_positions_.begin(), succeeding_board->second.parent_positions_.end(), current_board) == succeeding_board->second.parent_positions_.end());
-  succeeding_board->second.parent_positions_.push_back(current_board);
+  ASSERT(std::find(succeeding_data->parent_positions_.begin(), succeeding_data->parent_positions_.end(), current_data) ==
+      succeeding_data->parent_positions_.end());
+  succeeding_data->parent_positions_.push_back(current_data);
 }
 
 void BlackToMoveData::set_maximum_ply_on_parents(std::vector<white_to_move_nodes_type::iterator>& parents)
@@ -27,9 +34,9 @@ void BlackToMoveData::set_maximum_ply_on_parents(std::vector<white_to_move_nodes
   // position it is white to move and white would pick the move that leads to mate in the least number
   // of moves.
   int const max_ply = mate_in_moves_ + 1;
-  for (white_to_move_nodes_type::iterator parent_position : parent_positions_)
+  for (white_to_move_nodes_type::iterator parent_data : parent_positions_)
   {
-    WhiteToMoveData& data = parent_position->second;
+    WhiteToMoveData& data = *parent_data;
     int parent_ply = data.ply();
     // We `set_mate_in_ply` for incremental ply, starting with 0.
     // Therefore it can't happen that a parent_ply that is larger than max_ply is already set.
@@ -38,7 +45,7 @@ void BlackToMoveData::set_maximum_ply_on_parents(std::vector<white_to_move_nodes
     if (parent_ply == -1)
     {
       data.set_mate_in_ply(max_ply);
-      parents.push_back(parent_position);
+      parents.push_back(parent_data);
     }
   }
 }

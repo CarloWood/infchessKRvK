@@ -22,12 +22,6 @@ class Square : public SquareCompact
     return {x, y};
   }
 
-  // Used for ordering of a std::map with Board's.
-  bool distance_less(Square const& rhs_square) const
-  {
-    return coordinates_ < rhs_square.coordinates_;
-  }
-
   // Accessor for the individual coordinates.
   int operator[](int index) const
   {

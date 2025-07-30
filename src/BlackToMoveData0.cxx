@@ -1,6 +1,6 @@
 #include "sys.h"
-#include "BlackToMoveData.h"
-#include "WhiteToMoveData.h"
+#include "BlackToMoveData0.h"
+#include "WhiteToMoveData0.h"
 #include "debug.h"
 
 namespace version0 {

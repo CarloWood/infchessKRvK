@@ -2,6 +2,7 @@
 #include "Graph.h"
 #include "Square1.h"
 #include "debug.h"
+#include <algorithm>
 
 namespace version1 {
 
@@ -32,17 +33,18 @@ void Graph::classify()
                 if (pos.determine_legal(to_move))
                 {
                   Classification* classification;
+                  size_t index = pos.as_index();
                   if (to_move == black)
                   {
-                    auto ibp = black_to_move_.try_emplace(pos);
-                    ASSERT(ibp.second);
-                    classification = &ibp.first->second;
+                    ASSERT(!black_to_move_[index].is_legal());
+                    BlackToMoveData& data = black_to_move_[index];
+                    classification = &data;
                   }
                   else
                   {
-                    auto ibp = white_to_move_.try_emplace(pos);
-                    ASSERT(ibp.second);
-                    classification = &ibp.first->second;
+                    ASSERT(!white_to_move_[index].is_legal());
+                    WhiteToMoveData& data = white_to_move_[index];
+                    classification = &data;
                   }
                   classification->determine(pos, to_move);
                 }
@@ -75,9 +77,7 @@ bool operator==(version0::Graph const& lhs, version1::Graph const& rhs)
   version0::Graph::black_to_move_nodes_type const& black_to_move_map0 = lhs.black_to_move_map();
   version0::Graph::white_to_move_nodes_type const& white_to_move_map0 = lhs.white_to_move_map();
 
-  ASSERT(black_to_move_map1.size() == black_to_move_map0.size());
-  ASSERT(white_to_move_map1.size() == white_to_move_map1.size());
-  int total_boards = black_to_move_map0.size() + white_to_move_map1.size();
+  int total_boards = black_to_move_map0.size() + white_to_move_map0.size();
   int total_tested = 0;
 
   // Run over all positions with black to move.
@@ -107,14 +107,13 @@ bool operator==(version0::Graph const& lhs, version1::Graph const& rhs)
     version1::Square white_rook1(wrx, wry);
     version1::Board board1(black_king1, white_king1, white_rook1);
 
-    // Find this board in the version1 black_to_move_map.
-    auto iter = black_to_move_map1.find(board1);
+    // Get the corresponding version1 BlackToMoveData.
+    version1::BlackToMoveData const& data1 = black_to_move_map1[board1.as_index()];
     // Every position that exists in the version0 map of positions with black to move
     // must also exist in the version1 map of positions with black to move.
-    ASSERT(iter != black_to_move_map1.end());
+    ASSERT(data1.is_legal());
 
-    // Get the corresponding version1 BlackToMoveData and compare the classification with that of version0.
-    version1::BlackToMoveData const& data1 = iter->second;
+    // Compare the classification with that of version0.
     ASSERT(
         data0.is_mate() == data1.is_mate() &&
         data0.is_stalemate() == data1.is_stalemate() &&
@@ -151,9 +150,14 @@ bool operator==(version0::Graph const& lhs, version1::Graph const& rhs)
       version1::Square child_white_rook1(wrx, wry);
       version1::Board child_board1(child_black_king1, child_white_king1, child_white_rook1);
 
+      // Get the index.
+      size_t index = child_board1.as_index();
+      // Get the data pointer to its map element.
+      version1::WhiteToMoveData const* data_ptr = &rhs.white_to_move_map()[index];
+
       // Find this child board in the version1 list of child positions of the current board.
       auto iter = std::find_if(data1.child_positions().begin(), data1.child_positions().end(),
-          [&](auto&& i){ return i->first == child_board1; });
+          [&](auto&& i){ return &*i == data_ptr; });
       // Every position that exists in the version0 list of child positions
       // must also exist in the version1 list of child positions.
       ASSERT(iter != data1.child_positions().end());
@@ -182,8 +186,16 @@ bool operator==(version0::Graph const& lhs, version1::Graph const& rhs)
       version1::Square parent_white_rook1(wrx, wry);
       version1::Board parent_board1(parent_black_king1, parent_white_king1, parent_white_rook1);
 
+      // Get the index.
+      size_t index = parent_board1.as_index();
+      // Get the data pointer to its map element.
+      version1::WhiteToMoveData const* data_ptr = &rhs.white_to_move_map()[index];
+
+      // Find this parent board in the version1 list of parent positions of the current board.
       auto iter = std::find_if(data1.parent_positions().begin(), data1.parent_positions().end(),
-          [&](auto&& i){ return i->first == parent_board1; });
+          [&](auto&& i){ return &*i == data_ptr; });
+      // Every position that exists in the version0 list of parent positions
+      // must also exist in the version1 list of parent positions.
       ASSERT(iter != data1.parent_positions().end());
     }
 
@@ -219,9 +231,13 @@ bool operator==(version0::Graph const& lhs, version1::Graph const& rhs)
     version1::Square white_rook1(wrx, wry);
     version1::Board board1(black_king1, white_king1, white_rook1);
 
-    auto iter = white_to_move_map1.find(board1);
-    ASSERT(iter != white_to_move_map1.end());
-    version1::WhiteToMoveData const& data1 = iter->second;
+    // Get the corresponding version1 BlackToMoveData.
+    version1::WhiteToMoveData const& data1 = white_to_move_map1[board1.as_index()];
+    // Every position that exists in the version0 map of positions with black to move
+    // must also exist in the version1 map of positions with black to move.
+    ASSERT(data1.is_legal());
+
+    // Compare the classification with that of version0.
     ASSERT(
         data0.is_mate() == data1.is_mate() &&
         data0.is_stalemate() == data1.is_stalemate() &&
@@ -255,8 +271,16 @@ bool operator==(version0::Graph const& lhs, version1::Graph const& rhs)
       version1::Square child_white_rook1(wrx, wry);
       version1::Board child_board1(child_black_king1, child_white_king1, child_white_rook1);
 
+      // Get the index.
+      size_t index = child_board1.as_index();
+      // Get the data pointer to its map element.
+      version1::BlackToMoveData const* data_ptr = &rhs.black_to_move_map()[index];
+
+      // Find this child board in the version1 list of child positions of the current board.
       auto iter = std::find_if(data1.child_positions().begin(), data1.child_positions().end(),
-          [&](auto&& i){ return i->first == child_board1; });
+          [&](auto&& i){ return &*i == data_ptr; });
+      // Every position that exists in the version0 list of child positions
+      // must also exist in the version1 list of child positions.
       ASSERT(iter != data1.child_positions().end());
     }
     // Run over all parent positions of data0.
@@ -283,8 +307,16 @@ bool operator==(version0::Graph const& lhs, version1::Graph const& rhs)
       version1::Square parent_white_rook1(wrx, wry);
       version1::Board parent_board1(parent_black_king1, parent_white_king1, parent_white_rook1);
 
+      // Get the index.
+      size_t index = parent_board1.as_index();
+      // Get the data pointer to its map element.
+      version1::BlackToMoveData const* data_ptr = &rhs.black_to_move_map()[index];
+
+      // Find this parent board in the version1 list of parent positions of the current board.
       auto iter = std::find_if(data1.parent_positions().begin(), data1.parent_positions().end(),
-          [&](auto&& i){ return i->first == parent_board1; });
+          [&](auto&& i){ return &*i == data_ptr; });
+      // Every position that exists in the version0 list of parent positions
+      // must also exist in the version1 list of parent positions.
       ASSERT(iter != data1.parent_positions().end());
     }
 

@@ -35,6 +35,8 @@ void Classification::determine(Board const& board, Color to_move)
           Board::y_coord(board.black_king()) == Board::board_size - 1);
     }
   }
+  // Mark that board as legal.
+  set_legal();
 }
 
 #ifdef CWDEBUG

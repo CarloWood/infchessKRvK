@@ -7,6 +7,7 @@
 #include <functional>
 #include <tuple>
 #include <type_traits>
+#include <limits>
 #include "debug.h"
 
 namespace version1 {
@@ -49,6 +50,10 @@ class SquareCompact
   {
     return lhs.coordinates_ == rhs.coordinates_;
   }
+
+#ifdef CWDEBUG
+  void sane_coordinates(int board_size) const;
+#endif
 };
 
 // Forward declare Square, because that includes this header (required to get board_type and the constexpr variables that depend on it).
@@ -57,13 +62,15 @@ class Square;
 class Board
 {
 public:
-  static constexpr unsigned int board_size = 5;
+  static constexpr unsigned int board_size = 16;
   // The number of bits needed to store a single coordinate (horizontal or vertical: the board is square).
   static constexpr int coord_bits = utils::ceil_log2(board_size);
   // A square has two coordinates: x and y.
   static constexpr int square_bits = 2 * coord_bits;
   // A board has three pieces: black king, white king and white rook.
   static constexpr int total_required_bits = 3 * square_bits;
+  // The size of Graph::black_to_move_ and Graph::white_to_move_.
+  static constexpr size_t color_to_move_size = size_t{1} << total_required_bits;
   // Define the smallest type that can hold all required bits.
   using coordinates_type =
     std::conditional_t<total_required_bits <=  8, uint8_t,
@@ -131,16 +138,23 @@ public:
   coordinates_type coordinates_;        // The coordinates of the square of all three pieces, encoded as <black-king><white-king><white-rook>.
 
  public:
+  Board(size_t index) : coordinates_(index) { ASSERT(index < color_to_move_size); }
   Board(SquareCompact black_king, SquareCompact white_king, SquareCompact white_rook) :
     coordinates_(black_king.coordinates() << black_king_shift |
                  white_king.coordinates() << white_king_shift |
-                 white_rook.coordinates()) { }
+                 white_rook.coordinates())
+  {
+    Debug(black_king.sane_coordinates(board_size));
+    Debug(white_king.sane_coordinates(board_size));
+    Debug(white_rook.sane_coordinates(board_size));
+  }
 
   // Accessors.
   // Convert Board piece to a SquareCompact.
   SquareCompact black_king() const { return (coordinates_ >> black_king_shift) & square_mask; }
   SquareCompact white_king() const { return (coordinates_ >> white_king_shift) & square_mask; }
   SquareCompact white_rook() const { return coordinates_ & square_mask; }
+  size_t as_index() const { return coordinates_; }
 
   bool distance_less(Board const& board) const
   {
@@ -163,18 +177,21 @@ public:
 
   void set_black_king_square(SquareCompact black_king)
   {
+    Debug(black_king.sane_coordinates(board_size));
     coordinates_ &= ~black_king_mask;
     coordinates_ |= black_king.coordinates() << black_king_shift;
   }
 
   void set_white_king_square(SquareCompact white_king)
   {
+    Debug(white_king.sane_coordinates(board_size));
     coordinates_ &= ~white_king_mask;
     coordinates_ |= white_king.coordinates() << white_king_shift;
   }
 
   void set_white_rook_square(SquareCompact white_rook)
   {
+    Debug(white_rook.sane_coordinates(board_size));
     coordinates_ &= ~white_rook_mask;
     coordinates_ |= white_rook.coordinates();
   }
@@ -225,12 +242,14 @@ constexpr SquareCompact::SquareCompact(int x, int y) : coordinates_(Board::xy_to
 {
 }
 
-struct DistanceCompare
+#ifdef CWDEBUG
+inline void SquareCompact::sane_coordinates(int board_size) const
 {
-  bool operator()(Board const& lhs, Board const& rhs) const
-  {
-    return lhs.distance_less(rhs);
-  }
-};
+  int x = Board::x_coord(*this);
+  int y = Board::y_coord(*this);
+  ASSERT(0 <= x && x < board_size);
+  ASSERT(0 <= y && y < board_size);
+}
+#endif
 
 } // namespace version1

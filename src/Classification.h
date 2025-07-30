@@ -82,6 +82,7 @@ class Classification
   static constexpr uint8_t stalemate = 2;
   static constexpr uint8_t draw = 4;
   static constexpr uint8_t check = 8;
+  static constexpr uint8_t legal = 16;
 
  protected:
   std::uint8_t bits_{};
@@ -104,6 +105,9 @@ class Classification
   void set_mate() { bits_ |= mate; }
   // Set the stalemate bit.
   void set_stalemate() { bits_ |= stalemate; }
+  // Set the legal bit to mark the other bits as valid.
+  // Only invalid positions remain having this bit unset.
+  void set_legal() { bits_ |= legal; }
  public:
   // Set in how many ply this position is mate.
   void set_mate_in_ply(int ply)
@@ -123,6 +127,7 @@ class Classification
   bool is_stalemate() const { return (bits_ & stalemate); }
   bool is_draw() const { return (bits_ & draw); }
   bool is_check() const { return (bits_ & check); }
+  bool is_legal() const { return (bits_ & legal); }
   int ply() const { return mate_in_moves_; }
 
 #ifdef CWDEBUG

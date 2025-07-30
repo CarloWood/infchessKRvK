@@ -266,6 +266,8 @@ bool Board::determine_draw(Color to_move) const
 
 std::vector<Board> Board::get_succeeding_boards(Color to_move) const
 {
+  //Dout(dc::notice, "Board::get_succeeding_boards(" << to_move << ")");
+
   std::vector<Board> result;
 
   auto [bk, wk, wr] = abbreviations();
@@ -279,6 +281,8 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
     Board succeeding_board(*this);
     int const cbkx = bk[x];
     int const cbky = bk[y];
+    ASSERT(0 <= cbkx && cbkx < board_size);
+    ASSERT(0 <= cbky && cbky < board_size);
     int const dx_min = std::max(-1, -cbkx);
     int const dx_max = std::min(1U, Board::board_size - 1 - cbkx);
     int const dy_min = std::max(-1, -cbky);
@@ -289,7 +293,11 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
       {
         if (dx == 0 && dy == 0)
           continue;
+        //Dout(dc::notice, "Before: " << succeeding_board);
+        //Dout(dc::notice, "Calling set_black_king_square(" << cbkx << " + " << dx << " = " << (cbkx + dx) << ", " <<
+        //    cbky << " + " << dy << " = " << (cbky + dy) << ")");
         succeeding_board.set_black_king_square({cbkx + dx, cbky + dy});
+        //Dout(dc::notice, "  result: " << succeeding_board);
         result.push_back(succeeding_board);
       }
     }
@@ -299,6 +307,8 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
     using namespace coordinates;
     int const cwkx = wk[x];
     int const cwky = wk[y];
+    ASSERT(0 <= cwkx && cwkx < board_size);
+    ASSERT(0 <= cwky && cwky < board_size);
     int const dx_min = std::max(-1, -cwkx);
     int const dx_max = std::min(1U, Board::board_size - 1 - cwkx);
     int const dy_min = std::max(-1, -cwky);
@@ -320,6 +330,8 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
       Board succeeding_board(*this);
       int const cwrx = wr[x];
       int const cwry = wr[y];
+      ASSERT(0 <= cwrx && cwrx < board_size);
+      ASSERT(0 <= cwry && cwry < board_size);
       for (int horvert = 0; horvert < 2; ++horvert)
       {
         for (int dir = -1; dir <= 1; dir += 2)
