@@ -25,9 +25,9 @@ class SquareCompact
 
  protected:
   // The x and y coordinate of this square, stored as
-  //   [y-coord-bits][x-coord-bits]
-  //   <-coord_bits-><-coord_bits->
-  // where coord_bits is defined below, in class Board.
+  //   [ y-coord-bits ][ x-coord-bits ]
+  //   <-coord_bits_y-><-coord_bits_x->
+  // where coord_bits_x and -coord_bits_y are defined below, in class Board.
   // (0, 0) means the piece is in the (only) corner of the quarter-infinite board.
   coordinates_type coordinates_;
 
@@ -50,7 +50,7 @@ class SquareCompact
   }
 
 #ifdef CWDEBUG
-  void sane_coordinates(int board_size) const;
+  void sane_coordinates(int board_size_x, int board_size_y) const;
 #endif
 };
 
@@ -60,11 +60,13 @@ class Square;
 class Board
 {
 public:
-  static constexpr unsigned int board_size = 16;
+  static constexpr unsigned int board_size_x = 16;
+  static constexpr unsigned int board_size_y = 16;
   // The number of bits needed to store a single coordinate (horizontal or vertical: the board is square).
-  static constexpr int coord_bits = utils::ceil_log2(board_size);
+  static constexpr int coord_bits_x = utils::ceil_log2(board_size_x);
+  static constexpr int coord_bits_y = utils::ceil_log2(board_size_y);
   // A square has two coordinates: x and y.
-  static constexpr int square_bits = 2 * coord_bits;
+  static constexpr int square_bits = coord_bits_x + coord_bits_y;
   // A board has three pieces: black king, white king and white rook.
   static constexpr int total_required_bits = 3 * square_bits;
   // The size of Graph::black_to_move_ and Graph::white_to_move_.
@@ -80,14 +82,16 @@ public:
 
   // Lets store the coordinates of a Square as:
   //
-  //   [y-coord-bits][x-coord-bits]
-  //   <-coord_bits-><-coord_bits->
+  //   [ y-coord-bits ][ x-coord-bits ]
+  //   <-coord_bits_y-><-coord_bits_x->
   //   <--------square_bits------->
-  //   0000000000000011111111111111     <-- coord_mask
-  //   1111111111111111111111111111     <-- square_mask
+  //   00000000000000001111111111111111     <-- coord_mask_x
+  //   11111111111111110000000000000000     <-- coord_mask_y
+  //   11111111111111111111111111111111     <-- square_mask
 
   // Bit-mask for a single coordinate.
-  static constexpr coordinates_type coord_mask = ~coordinates_type{0} >> (available_bits - coord_bits);
+  static constexpr coordinates_type coord_mask_x = ~coordinates_type{0} >> (available_bits - coord_bits_x);
+  static constexpr coordinates_type coord_mask_y = (~coordinates_type{0} >> (available_bits - coord_bits_y)) << coord_bits_x;
   // Bit-mask for a single square (two coordinates).
   static constexpr coordinates_type square_mask = ~coordinates_type{0} >> (available_bits - square_bits);
 
@@ -109,20 +113,20 @@ public:
   {
     // A SquareCompact::coordinates_type contains <y-coord-bits><x-coord-bits>.
     SquareCompact::coordinates_type square_coordinates = x;
-    square_coordinates |= y << coord_bits;
+    square_coordinates |= y << coord_bits_x;
     return square_coordinates;
   }
 
   // Extract the x-coordinate from a SquareCompact.
   static constexpr int x_coord(SquareCompact square)
   {
-    return square.coordinates() & coord_mask;
+    return square.coordinates() & coord_mask_x;
   }
 
   // Extract the y-coordinate from a SquareCompact.
   static constexpr int y_coord(SquareCompact square)
   {
-    return (square.coordinates() >> coord_bits) & coord_mask;
+    return (square.coordinates() & coord_mask_y) >> coord_bits_x;
   }
 
   enum class Mate : std::uint8_t
@@ -142,9 +146,9 @@ public:
                  white_king.coordinates() << white_king_shift |
                  white_rook.coordinates())
   {
-    Debug(black_king.sane_coordinates(board_size));
-    Debug(white_king.sane_coordinates(board_size));
-    Debug(white_rook.sane_coordinates(board_size));
+    Debug(black_king.sane_coordinates(board_size_x, board_size_y));
+    Debug(white_king.sane_coordinates(board_size_x, board_size_y));
+    Debug(white_rook.sane_coordinates(board_size_x, board_size_y));
   }
 
   // Accessors.
@@ -177,21 +181,21 @@ public:
 
   void set_black_king_square(SquareCompact black_king)
   {
-    Debug(black_king.sane_coordinates(board_size));
+    Debug(black_king.sane_coordinates(board_size_x, board_size_y));
     coordinates_ &= ~black_king_mask;
     coordinates_ |= black_king.coordinates() << black_king_shift;
   }
 
   void set_white_king_square(SquareCompact white_king)
   {
-    Debug(white_king.sane_coordinates(board_size));
+    Debug(white_king.sane_coordinates(board_size_x, board_size_y));
     coordinates_ &= ~white_king_mask;
     coordinates_ |= white_king.coordinates() << white_king_shift;
   }
 
   void set_white_rook_square(SquareCompact white_rook)
   {
-    Debug(white_rook.sane_coordinates(board_size));
+    Debug(white_rook.sane_coordinates(board_size_x, board_size_y));
     coordinates_ &= ~white_rook_mask;
     coordinates_ |= white_rook.coordinates();
   }
@@ -243,11 +247,11 @@ constexpr SquareCompact::SquareCompact(int x, int y) : coordinates_(Board::xy_to
 }
 
 #ifdef CWDEBUG
-inline void SquareCompact::sane_coordinates(int board_size) const
+inline void SquareCompact::sane_coordinates(int board_size_x, int board_size_y) const
 {
   int x = Board::x_coord(*this);
   int y = Board::y_coord(*this);
-  ASSERT(0 <= x && x < board_size);
-  ASSERT(0 <= y && y < board_size);
+  ASSERT(0 <= x && x < board_size_x);
+  ASSERT(0 <= y && y < board_size_y);
 }
 #endif

@@ -29,8 +29,8 @@ void Classification::determine(Board const& board, Color to_move)
     else
     {
       using namespace coordinates;
-      ASSERT(has_moves || Board::x_coord(board.black_king()) == Board::board_size - 1 ||
-          Board::y_coord(board.black_king()) == Board::board_size - 1);
+      ASSERT(has_moves || Board::x_coord(board.black_king()) == Board::board_size_x - 1 ||
+          Board::y_coord(board.black_king()) == Board::board_size_y - 1);
     }
   }
   // Mark that board as legal.

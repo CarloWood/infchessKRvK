@@ -7,17 +7,17 @@
 void Graph::classify()
 {
   // Generate all possible positions.
-  for (int bk_x = 0; bk_x < Board::board_size; ++bk_x)
+  for (int bk_x = 0; bk_x < Board::board_size_x; ++bk_x)
   {
-    for (int bk_y = 0; bk_y < Board::board_size; ++bk_y)
+    for (int bk_y = 0; bk_y < Board::board_size_y; ++bk_y)
     {
-      for (int wk_x = 0; wk_x < Board::board_size; ++wk_x)
+      for (int wk_x = 0; wk_x < Board::board_size_x; ++wk_x)
       {
-        for (int wk_y = 0; wk_y < Board::board_size; ++wk_y)
+        for (int wk_y = 0; wk_y < Board::board_size_y; ++wk_y)
         {
-          for (int wr_x = 0; wr_x < Board::board_size; ++wr_x)
+          for (int wr_x = 0; wr_x < Board::board_size_x; ++wr_x)
           {
-            for (int wr_y = 0; wr_y < Board::board_size; ++wr_y)
+            for (int wr_y = 0; wr_y < Board::board_size_y; ++wr_y)
             {
               for (int color = 0; color < 2; ++color)
               {

@@ -24,7 +24,7 @@ bool Board::black_has_moves() const
   ASSERT(black_is_to_move());
 
   // Set up coordinates for easy swapping.
-  auto [x, y] = Square::default_coordinates();
+  auto [x, y, board_size_x, board_size_y] = Square::default_coordinates();
   auto [bk, wk, wr] = Board::abbreviations();
 
   // If the black king is to move but isn't mate or stalemate then black can move.
@@ -41,7 +41,10 @@ bool Board::black_has_moves() const
 
   // To simply the code below, lets flip the position if the king is not against the left edge.
   if (bk[x] != 0)
+  {
     std::swap(x, y);
+    std::swap(board_size_x, board_size_y);
+  }
 
   // The black king is now against the left edge.
   //       ┏━0━1━2━3
@@ -141,7 +144,7 @@ bool Board::determine_check() const
   // to the black king, without being concerned about whose turn it is.
 
   // Set up coordinates for easy swapping.
-  auto [x, y] = Square::default_coordinates();
+  auto [x, y, board_size_x, board_size_y] = Square::default_coordinates();
   auto [bk, wk, wr] = Board::abbreviations();
 
   // Determine if the rook is on the same file and/or row as the black king.
@@ -156,7 +159,10 @@ bool Board::determine_check() const
 
   // To simply the code below, lets flip the position if the king and rook are not on the same row.
   if (!same_row)
+  {
     std::swap(x, y);
+    std::swap(board_size_x, board_size_y);
+  }
 
   // If the white king is not on the same row as the black king (and rook) then it isn't blocking the check.
   if (wk[y] != bk[y])
@@ -239,16 +245,19 @@ bool Board::determine_draw(Color to_move) const
   //         R K
 
   // Set up coordinates for easy swapping.
-  auto [x, y] = Square::default_coordinates();
+  auto [x, y, board_size_x, board_size_y] = Square::default_coordinates();
   auto [bk, wk, wr] = Board::abbreviations();
 
   // To simply the code below, lets flip the position if the king is on the right virtual edge.
-  if (bk[x] == Board::board_size - 1)
+  if (bk[x] == board_size_x - 1)
+  {
     std::swap(x, y);
+    std::swap(board_size_x, board_size_y);
+  }
 
   // Now the king is on the bottom virtual edge, or at no virtual edge at all.
   // If it is not at a virtual edge, it is not a draw.
-  if (bk[y] != Board::board_size - 1)
+  if (bk[y] != board_size_y - 1)
     return false;
 
   // Now the black king is on the bottom virtual edge:
@@ -259,7 +268,7 @@ bool Board::determine_draw(Color to_move) const
   //     3 ┃ ♔ ♔ ♔ ♔
 
   // Hence it is a draw unless the position is position A.
-  return !(bk[x] == 0 && wk[x] == 2 && wk[y] == Board::board_size - 1 && wr[x] == 0);
+  return !(bk[x] == 0 && wk[x] == 2 && wk[y] == board_size_y - 1 && wr[x] == 0);
 }
 
 std::vector<Board> Board::get_succeeding_boards(Color to_move) const
@@ -279,12 +288,12 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
     Board succeeding_board(*this);
     int const cbkx = bk[x];
     int const cbky = bk[y];
-    ASSERT(0 <= cbkx && cbkx < board_size);
-    ASSERT(0 <= cbky && cbky < board_size);
+    ASSERT(0 <= cbkx && cbkx < board_size_x);
+    ASSERT(0 <= cbky && cbky < board_size_y);
     int const dx_min = std::max(-1, -cbkx);
-    int const dx_max = std::min(1U, Board::board_size - 1 - cbkx);
+    int const dx_max = std::min(1U, Board::board_size_x - 1 - cbkx);
     int const dy_min = std::max(-1, -cbky);
-    int const dy_max = std::min(1U, Board::board_size - 1 - cbky);
+    int const dy_max = std::min(1U, Board::board_size_y - 1 - cbky);
     for (int dx = dx_min; dx <= dx_max; ++dx)
     {
       for (int dy = dy_min; dy <= dy_max; ++dy)
@@ -305,12 +314,12 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
     using namespace coordinates;
     int const cwkx = wk[x];
     int const cwky = wk[y];
-    ASSERT(0 <= cwkx && cwkx < board_size);
-    ASSERT(0 <= cwky && cwky < board_size);
+    ASSERT(0 <= cwkx && cwkx < board_size_x);
+    ASSERT(0 <= cwky && cwky < board_size_y);
     int const dx_min = std::max(-1, -cwkx);
-    int const dx_max = std::min(1U, Board::board_size - 1 - cwkx);
+    int const dx_max = std::min(1U, Board::board_size_x - 1 - cwkx);
     int const dy_min = std::max(-1, -cwky);
-    int const dy_max = std::min(1U, Board::board_size - 1 - cwky);
+    int const dy_max = std::min(1U, Board::board_size_y - 1 - cwky);
     {
       Board succeeding_board(*this);
       for (int dx = dx_min; dx <= dx_max; ++dx)
@@ -328,13 +337,14 @@ std::vector<Board> Board::get_succeeding_boards(Color to_move) const
       Board succeeding_board(*this);
       int const cwrx = wr[x];
       int const cwry = wr[y];
-      ASSERT(0 <= cwrx && cwrx < board_size);
-      ASSERT(0 <= cwry && cwry < board_size);
+      ASSERT(0 <= cwrx && cwrx < board_size_x);
+      ASSERT(0 <= cwry && cwry < board_size_y);
       for (int horvert = 0; horvert < 2; ++horvert)
       {
+        int board_size = horvert == 0 ? board_size_x : board_size_y;
         for (int dir = -1; dir <= 1; dir += 2)
         {
-          int end = dir == -1 ? -1 : Board::board_size;
+          int end = dir == -1 ? -1 : board_size;
           for (int dist = 1; dist < std::abs(end - (horvert == 0 ? cwrx : cwry)); ++dist)
           {
             int wrx = cwrx;
@@ -408,7 +418,7 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Fig
 {
   // Print top to bottom.
   bool skip_top = true;
-  for (int y = Board::board_size - 1; y >= 0; --y)
+  for (int y = Board::board_size_y - 1; y >= 0; --y)
   {
     bool restart = false;
     for (;;)    // Allow restarting this y value when the first piece is encountered.
@@ -419,7 +429,7 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Fig
         os.write(reinterpret_cast<const char*>(left_side.data()), left_side.size());
       }
       // Print left to right.
-      for (int x = 0; x < Board::board_size; ++x)
+      for (int x = 0; x < Board::board_size_x; ++x)
       {
         Figure figure = select_figure({x, y});
         if (skip_top)
@@ -451,7 +461,7 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Fig
   }
   if (xyz)
   {
-    int line_total = 2 * board_size - 15; // 15 = length("━a━b━c···━x━y━z").
+    int line_total = 2 * board_size_x - 15; // 15 = length("━a━b━c···━x━y━z").
     std::cout << "   ┗━a━b━c";
     int line_left = line_total / 2;
     int line_right = line_total - line_left;
@@ -473,16 +483,16 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Fig
   {
     os << "  ";
     os.write(reinterpret_cast<const char*>(bcorner.data()), bcorner.size());
-    for (int x = 0; x < Board::board_size; ++x)
+    for (int x = 0; x < Board::board_size_x; ++x)
     {
       os.write(reinterpret_cast<const char*>(top_side.data()), top_side.size());
       os << static_cast<char>('a' + x % 26);
     }
     os << '\n';
-    if (Board::board_size > 26)
+    if (Board::board_size_x > 26)
     {
       os << "\n    ";
-      for (int x = 0; x < Board::board_size; ++x)
+      for (int x = 0; x < Board::board_size_x; ++x)
       {
         int z = x / 26;
         os << ' ';
@@ -555,10 +565,10 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
     return;
 
   Dout(debug_channel, *this << ":");
-  if (Board::board_size > 10)
+  if (Board::board_size_x > 10)
   {
     Dout(debug_channel|continued_cf, "    ");
-    for (int x = 0; x < Board::board_size; ++x)
+    for (int x = 0; x < Board::board_size_x; ++x)
     {
       int tenth = x / 10;
       Dout(dc::continued, ' ');
@@ -570,16 +580,16 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
     Dout(dc::finish, "");
   }
   Dout(debug_channel|continued_cf, "  " << utils::print_using(corner, &raw_utf8));
-  for (int x = 0; x < Board::board_size; ++x)
+  for (int x = 0; x < Board::board_size_x; ++x)
     Dout(dc::continued, utils::print_using(top_side, &raw_utf8) << (x % 10));
   Dout(dc::finish, "");
   // Print top to bottom.
-  for (int y = 0; y < Board::board_size; ++y)
+  for (int y = 0; y < Board::board_size_y; ++y)
   {
     std::ostringstream oss;
     oss << std::setw(2) << std::setfill(' ') << std::right << (y % 100) << utils::print_using(left_side, &raw_utf8);
     // Print left to right.
-    for (int x = 0; x < Board::board_size; ++x)
+    for (int x = 0; x < Board::board_size_x; ++x)
     {
       SquareCompact square_coordinates(x, y);
 

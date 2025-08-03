@@ -55,7 +55,7 @@ std::tuple<char, int, int> parseChessMove()
   return std::make_tuple(piece, xCoord, yCoord - 1);
 }
 
-std::tuple<char, int, int> parse_move(Color color, int board_size)
+std::tuple<char, int, int> parse_move(Color color, int board_size_x, int board_size_y)
 {
   std::tuple<char, int, int> result;
   for (;;)
@@ -67,9 +67,9 @@ std::tuple<char, int, int> parse_move(Color color, int board_size)
       auto [piece, x, y] = result;
       if (color == black && piece == 'R')
         throw std::invalid_argument("Black doesn't have a rook");
-      if (x >= board_size)
+      if (x >= board_size_x)
         throw std::invalid_argument("The x-coordinate is outside the board");
-      if (y >= board_size)
+      if (y >= board_size_y)
         throw std::invalid_argument("The y-coordinate is outside the board");
       break;
     }

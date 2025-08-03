@@ -14,10 +14,10 @@ class Square : public SquareCompact
   constexpr Square(int x, int y) : SquareCompact(x, y) { }
   Square(SquareCompact coordinates) : SquareCompact(coordinates) { }
 
-  static constexpr std::pair<int, int> default_coordinates()
+  static constexpr std::tuple<int, int, int, int> default_coordinates()
   {
     using namespace coordinates;
-    return {x, y};
+    return {x, y, Board::board_size_x, Board::board_size_y};
   }
 
   // Accessor for the individual coordinates.

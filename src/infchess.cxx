@@ -30,7 +30,8 @@ int main()
 {
   Debug(NAMESPACE_DEBUG::init());
 
-  constexpr int board_size = Board::board_size;
+  constexpr int board_size_x = Board::board_size_x;
+  constexpr int board_size_y = Board::board_size_y;
 
   // Construct the initial graph with all positions that are already mate.
   auto start1 = std::chrono::high_resolution_clock::now();
@@ -165,7 +166,7 @@ int main()
   )
     ++initial_position;
 #elif 1
-  for (int m = 2; m < 9; ++m)
+  for (int m = 2; m < 7; ++m)
   {
     std::vector<int> black_to_move_final_k_values;
     std::vector<int> white_to_move_final_k_values;
@@ -173,13 +174,13 @@ int main()
     for (int relative_position_index = 0; relative_position_index < 5; ++relative_position_index)
     {
       int const offset = 2;     // Using a value of 2 keeps the white rook away from the virtual right edge.
-      Board const largest_n_board = get_relative_position(relative_position_index, board_size - 1 - offset, m);
+      Board const largest_n_board = get_relative_position(relative_position_index, board_size_x - 1 - offset, m);
       {
         constexpr Color to_move = black;
         largest_n_board.utf8art(std::cout, to_move, true);
         std::cout << "\n";
         std::vector<int> ply_values;
-        for (int n = 0; n < board_size - offset; ++n)
+        for (int n = 0; n < board_size_x - offset; ++n)
         {
           Board b = get_relative_position(relative_position_index, n, m);
           ply_values.push_back(graph.map_with_to_move<to_move.color_>()[b.as_index()].ply());
@@ -193,7 +194,7 @@ int main()
         largest_n_board.utf8art(std::cout, to_move, true);
         std::cout << "\n";
         std::vector<int> ply_values;
-        for (int n = 0; n < board_size - offset; ++n)
+        for (int n = 0; n < board_size_x - offset; ++n)
         {
           Board b = get_relative_position(relative_position_index, n, m);
           ply_values.push_back(graph.map_with_to_move<to_move.color_>()[b.as_index()].ply());
@@ -233,11 +234,12 @@ int main()
   }
 
 #endif
+  //return 0;
 
-  int m = 5;
-  int n = 12;
-  //Board b({n, m - 1}, {n + 2, m - 1}, {n + 3, m});
-  Board b({3, 1}, {3, 3}, {4, 2});
+  int n = 7;
+  int m = 6;
+  Board b({n, m - 1}, {n, m + 1}, {n + 1, m});
+  //Board b({3, 1}, {3, 3}, {4, 2});
   initial_position = graph.white_to_move_map().begin() + b.as_index();
   Board board1(graph.get_index(initial_position));
   Board const* board = &board1;
@@ -407,7 +409,7 @@ int main()
       // Get a move from the user.
       for (;;)
       {
-        auto [piece, x, y] = parse_move(to_move, board_size);
+        auto [piece, x, y] = parse_move(to_move, board_size_x, board_size_y);
         Board new_board(*board);
         if (to_move == white)
         {
