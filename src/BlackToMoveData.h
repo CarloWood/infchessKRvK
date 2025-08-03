@@ -1,11 +1,9 @@
 #pragma once
 
-#include "Board1.h"
+#include "Board.h"
 #include "Classification.h"
 #include <vector>
 #include <map>
-
-namespace version1 {
 
 class WhiteToMoveData;
 #if CW_DEBUG
@@ -44,5 +42,3 @@ class BlackToMoveData : public Classification
   void print_on(std::ostream& os) const;
 #endif
 };
-
-} // namespace version1

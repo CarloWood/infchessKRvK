@@ -10,8 +10,6 @@
 #include <limits>
 #include "debug.h"
 
-namespace version1 {
-
 #ifdef CWDEBUG
 // This class defines a print_on method.
 using utils::has_print_on::operator<<;
@@ -253,5 +251,3 @@ inline void SquareCompact::sane_coordinates(int board_size) const
   ASSERT(0 <= y && y < board_size);
 }
 #endif
-
-} // namespace version1

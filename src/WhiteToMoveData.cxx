@@ -1,13 +1,11 @@
 #include "sys.h"
-#include "WhiteToMoveData1.h"
-#include "BlackToMoveData1.h"
+#include "WhiteToMoveData.h"
+#include "BlackToMoveData.h"
 #include "debug.h"
 
 #if CW_DEBUG
 #include "Graph.h"
 #endif
-
-namespace version1 {
 
 void WhiteToMoveData::add_edges(white_to_move_nodes_type::iterator current_data, black_to_move_nodes_type::iterator succeeding_data
   COMMA_DEBUG_ONLY(Graph const& graph))
@@ -62,5 +60,3 @@ void WhiteToMoveData::print_on(std::ostream& os) const
   Classification::print_on(os);
 }
 #endif
-
-} // namespace version1

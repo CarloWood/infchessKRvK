@@ -1,13 +1,11 @@
 #pragma once
 
-#include "Board1.h"
+#include "Board.h"
 #include "coordinates.h"
 #include <iosfwd>
 #include <utility>
 #include <array>
 #include <cmath>
-
-namespace version1 {
 
 class Square : public SquareCompact
 {
@@ -42,5 +40,3 @@ class Square : public SquareCompact
 };
 
 std::ostream& operator<<(std::ostream& os, Square const& square);
-
-} // namespace version1

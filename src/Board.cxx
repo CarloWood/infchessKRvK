@@ -1,6 +1,6 @@
 #include "sys.h"
-#include "Board1.h"
-#include "Square1.h"
+#include "Board.h"
+#include "Square.h"
 #include "Color.h"
 #include "utils/print_using.h"
 #include <utility>
@@ -10,8 +10,6 @@
 #include <iomanip>
 #include <algorithm>
 #include "debug.h"
-
-namespace version1 {
 
 std::tuple<Square, Square, Square> Board::abbreviations() const
 {
@@ -623,5 +621,3 @@ void Board::print_on(std::ostream& os) const
    ", white rook:" << Square{white_rook()} << '}';
 }
 #endif
-
-} // namespace version1

@@ -1,10 +1,8 @@
 #include "sys.h"
 #include "Classification.h"
-#include "Board1.h"
+#include "Board.h"
 #include "coordinates.h"
 #include <iostream>
-
-namespace version1 {
 
 void Classification::determine(Board const& board, Color to_move)
 {
@@ -45,5 +43,3 @@ void Classification::print_on(std::ostream& os) const
   os << "{bits:" << static_cast<int>(bits_) << ", mate_in_moves:" << mate_in_moves_ << '}';
 }
 #endif
-
-} // namespace version1
