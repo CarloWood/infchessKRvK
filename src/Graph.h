@@ -50,6 +50,15 @@ class Graph
       return white_to_move_;
   }
 
+  template<color_type color>
+  auto const& map_with_to_move() const
+  {
+    if constexpr (color == black)
+      return black_to_move_;
+    else
+      return white_to_move_;
+  }
+
   void classify();
 //  void generate(int ply);
   template<color_type color>
@@ -149,6 +158,15 @@ class Graph
 
   template<color_type color>
   auto& map_with_to_move()
+  {
+    if constexpr (color == black)
+      return black_to_move_;
+    else
+      return white_to_move_;
+  }
+
+  template<color_type color>
+  auto const& map_with_to_move() const
   {
     if constexpr (color == black)
       return black_to_move_;

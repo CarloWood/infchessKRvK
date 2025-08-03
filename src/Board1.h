@@ -165,6 +165,8 @@ public:
     return coordinates_ == other.coordinates_;
   };
 
+  std::string get_move(Board const& to_board);
+
   enum class Figure {
     none,
     black_king,
@@ -172,8 +174,8 @@ public:
     white_rook
   };
 
-  static void utf8art(std::ostream& os, std::function<Figure (Square)> select_figure);
-  void utf8art(std::ostream& os) const;
+  static void utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Figure (Square)> select_figure);
+  void utf8art(std::ostream& os, Color to_move, bool xyz = false) const;
 
   void set_black_king_square(SquareCompact black_king)
   {

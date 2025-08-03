@@ -406,55 +406,101 @@ void print_rook_to(std::ostream& os)
 }
 
 //static
-void Board::utf8art(std::ostream& os, std::function<Figure (Square)> select_figure)
+void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Figure (Square)> select_figure)
 {
   // Print top to bottom.
+  bool skip_top = true;
   for (int y = Board::board_size - 1; y >= 0; --y)
   {
-    os << std::setw(2) << std::setfill(' ') << std::right << (y + 1);
-    os.write(reinterpret_cast<const char*>(left_side.data()), left_side.size());
-    // Print left to right.
-    for (int x = 0; x < Board::board_size; ++x)
+    bool restart = false;
+    for (;;)    // Allow restarting this y value when the first piece is encountered.
     {
-      Figure figure = select_figure({x, y});
-      if (figure == Figure::black_king)
-        print_king_to(os, black);
-      else if (figure == Figure::white_king)
-        print_king_to(os, white);
-      else if (figure == Figure::white_rook)
-        print_rook_to(os);
-      else
-        print_none_to(os, (x + y) % 2 == 1 ? black : white);
+      if (!skip_top)
+      {
+        os << std::setw(2) << std::setfill(' ') << std::right << (y + 1);
+        os.write(reinterpret_cast<const char*>(left_side.data()), left_side.size());
+      }
+      // Print left to right.
+      for (int x = 0; x < Board::board_size; ++x)
+      {
+        Figure figure = select_figure({x, y});
+        if (skip_top)
+        {
+          if (figure == Figure::none)
+            continue;
+          skip_top = false;
+          restart = true;
+          break;
+        }
+        if (figure == Figure::black_king)
+          print_king_to(os, black);
+        else if (figure == Figure::white_king)
+          print_king_to(os, white);
+        else if (figure == Figure::white_rook)
+          print_rook_to(os);
+        else
+          print_none_to(os, (x + y) % 2 == 1 ? black : white);
+      }
+      if (restart)
+      {
+        restart = false;
+        continue;
+      }
+      if (!skip_top)
+        os << "\n";
+      break;
     }
-    os << "\n";
   }
-  os << "  ";
-  os.write(reinterpret_cast<const char*>(bcorner.data()), bcorner.size());
-  for (int x = 0; x < Board::board_size; ++x)
+  if (xyz)
   {
-    os.write(reinterpret_cast<const char*>(top_side.data()), top_side.size());
-    os << static_cast<char>('a' + x % 26);
+    int line_total = 2 * board_size - 15; // 15 = length("━a━b━c···━x━y━z").
+    std::cout << "   ┗━a━b━c";
+    int line_left = line_total / 2;
+    int line_right = line_total - line_left;
+    for (int i = 0; i < line_left; ++i)
+      std::cout << "━";
+    std::cout << "···";
+    for (int i = 0; i < line_right; ++i)
+      std::cout << "━";
+    std::cout << "━x━y━z\n";
+    std::cout << "     🢐";
+    for (int i = 0; i < line_left + 3; ++i)
+      std::cout << "─";
+    std::cout << "n";
+    for (int i = 0; i < line_right + 2; ++i)
+      std::cout << "─";
+    std::cout << "🢒 " << to_move << " to move\n";
   }
-  os << '\n';
-  if (Board::board_size > 26)
+  else
   {
-    os << "\n    ";
+    os << "  ";
+    os.write(reinterpret_cast<const char*>(bcorner.data()), bcorner.size());
     for (int x = 0; x < Board::board_size; ++x)
     {
-      int z = x / 26;
-      os << ' ';
-      if (z == 0)
+      os.write(reinterpret_cast<const char*>(top_side.data()), top_side.size());
+      os << static_cast<char>('a' + x % 26);
+    }
+    os << '\n';
+    if (Board::board_size > 26)
+    {
+      os << "\n    ";
+      for (int x = 0; x < Board::board_size; ++x)
+      {
+        int z = x / 26;
         os << ' ';
-      else
-        os << static_cast<char>('a' + z % 26);
+        if (z == 0)
+          os << ' ';
+        else
+          os << static_cast<char>('a' + z % 26);
+      }
+      os << "\n";
     }
-    os << "\n";
   }
 }
 
-void Board::utf8art(std::ostream& os) const
+void Board::utf8art(std::ostream& os, Color to_move, bool xyz) const
 {
-  Board::utf8art(os, [this](Square pos){
+  Board::utf8art(os, to_move, xyz, [this](Square pos){
     Square::coordinates_type sc = pos.coordinates();
     if (black_king() == sc)
       return Figure::black_king;
@@ -465,6 +511,43 @@ void Board::utf8art(std::ostream& os) const
     else
       return Figure::none;
   });
+}
+
+std::string Board::get_move(Board const& to_board)
+{
+  size_t diff = as_index() ^ to_board.as_index();
+
+  int x, y;
+  char piece;
+
+  // Check which piece moved by examining the XOR mask
+  if ((diff & Board::black_king_mask))
+  {
+    SquareCompact to_black_king = to_board.black_king();
+    x = Board::x_coord(to_black_king);
+    y = Board::y_coord(to_black_king);
+    piece = 'K';
+  }
+  else if ((diff & Board::white_king_mask))
+  {
+    SquareCompact to_white_king = to_board.white_king();
+    x = Board::x_coord(to_white_king);
+    y = Board::y_coord(to_white_king);
+    piece = 'K';
+  }
+  else
+  {
+    // There must have been a move.
+    ASSERT((diff & Board::white_rook_mask));
+    SquareCompact to_white_rook = to_board.white_rook();
+    x = Board::x_coord(to_white_rook);
+    y = Board::y_coord(to_white_rook);
+    piece = 'R';
+  }
+
+  std::ostringstream oss;
+  oss << piece << static_cast<char>('a' + x) << (y + 1);
+  return oss.str();
 }
 
 #ifdef CWDEBUG
