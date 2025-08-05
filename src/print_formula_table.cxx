@@ -33,12 +33,46 @@ int print_formula_table(int m, std::vector<int> const& values)
     k_values[n] = values[n] - 2 * n;
 
   // Get the final value of k.
-  int const final_k = k_values.back();
+  // Unfortunately, the last entries can contain errors because they are
+  // close to the virtual edge: if black steps over that edge, the position
+  // is declared a draw, so black might attempt to go for that goal instead
+  // of the real optimal play.
+  //
+  // The heuristic that I'm using is that if there is a group with a size
+  // of at least five then the first of that must be the stable_n value.
+  //
+  // For example, assume we have the following k values:
+  //
+  //        n = ... 23 24 25 26 27 28 29 30 31 |
+  //   values = ... 54 58 60 62 64 66 68 72 76 |
+  // k_values = ...  8 10 10 10 10 10 10 12 14 |  (values - 2 * n)
+  //
+  // Then 10 is the final_k and the first 10 corresponds to stable_n (25).              // From the example:
+  int stable_n = number_of_values - 1;                                                  // stable_n = 31
+  int final_k = k_values[stable_n];                                                     // final_k = 14
+  int count = 1;                                                                        // count = 1
 
-  // Determine the smallest N for which final_k + 2 * n == values[n] for all n >= N.
-  int stable_n = number_of_values - 1;
-  while (stable_n > 1 && final_k + 2 * (stable_n - 1) == values[stable_n - 1])
-    --stable_n;
+  // Determine the smallest N for which final_k + 2 * n == values[n] for all n >= N.    // From the example:
+  int prev_k = final_k;                                                                 // prev_k = 14
+                                                                                        // Loop: first          second     third
+  for (int n = stable_n - 1; n > 1; --n)                                                // n = 30               n = 29     n = 28
+    if (k_values[n] == prev_k)          // The same k value as the previous one?        // 12 == 14?            10 == 12?  10 == 10?
+    {
+      if (final_k == prev_k)                                                            //                                 14 == 10?
+        --stable_n;
+      else if (++count == 5)                                                            //                                 count = 2
+      {
+        stable_n = n;
+        final_k = prev_k;
+      }
+    }
+    else if (count == 5)                                                                // 1 == 5?              1 == 5?
+      break;
+    else
+    {
+      prev_k = k_values[n];                                                             // prev_k = 12          prev_k = 10
+      count = 1;                                                                        // count = 1            count = 1
+    }
 
   // Print first line, e.g: n =  0   1   2   3   4   5   ⩾6
   std::cout << "     n =  0";

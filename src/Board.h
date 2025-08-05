@@ -60,8 +60,8 @@ class Square;
 class Board
 {
 public:
-  static constexpr unsigned int board_size_x = 16;
-  static constexpr unsigned int board_size_y = 16;
+  static constexpr unsigned int board_size_x = 20;
+  static constexpr unsigned int board_size_y = 10;
   // The number of bits needed to store a single coordinate (horizontal or vertical: the board is square).
   static constexpr int coord_bits_x = utils::ceil_log2(board_size_x);
   static constexpr int coord_bits_y = utils::ceil_log2(board_size_y);
