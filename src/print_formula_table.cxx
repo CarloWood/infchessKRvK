@@ -19,7 +19,7 @@ struct StreamStateGuard
   }
 };
 
-int print_formula_table(int m, std::vector<int> const& values)
+std::pair<int, int> print_formula_table(int m, std::vector<int> const& values)
 {
   int const spacing = 4;
   int const number_of_values = values.size();
@@ -74,6 +74,7 @@ int print_formula_table(int m, std::vector<int> const& values)
       count = 1;                                                                        // count = 1            count = 1
     }
 
+#if 0 // Suppress printing for now.
   // Print first line, e.g: n =  0   1   2   3   4   5   ⩾6
   std::cout << "     n =  0";
   for (int n = 1; n < stable_n; ++n)
@@ -172,8 +173,9 @@ int print_formula_table(int m, std::vector<int> const& values)
 
   // Handle the ⩾N case (stable formula).
   std::cout << "  " << std::to_string(final_k) << "+2n" << std::endl;
+#endif
 
-  return final_k;
+  return {final_k, stable_n};
 }
 
 #ifdef EXAMPLE

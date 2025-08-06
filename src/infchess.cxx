@@ -11,19 +11,109 @@
 #include <chrono>
 #include "debug.h"
 
+constexpr int relative_position_index_end = 20;
+constexpr int relative_position_width = 4;
+constexpr int relative_position_height = 4;
+
 Board get_relative_position(int relative_position_index, int n, int m)
 {
-  //       0 1 2 <- white king
+  // relative_position_index / 5 = 0:
+  //
+  //         0 1 2 <- white king: relative_position_index MOD 5
+  //   m ─     R 3
+  // m-1 ─ k ·   4
+  //       |   |
+  //       n   n+2
+  //
+  // relative_position_index / 5 = 1:
+  //
+  //       0 1 2 <- white king: relative_position_index MOD 5
   //   m ─   R 3
   // m-1 ─ k   4
   //       | |
   //       n n+1
+  //
+  // relative_position_index / 5 = 2:
+  //
+  //         0 1 2 <- white king: relative_position_index MOD 5
+  //   m ─     R 3
+  //       · ·   4
+  // m-2 ─ k ·
+  //       |   |
+  //       n   n+2
+  //
+  // relative_position_index / 5 = 3:
+  //
+  //       0 1 2 <- white king: relative_position_index MOD 5
+  //   m ─   R 3
+  //     · ·   4
+  // m-2 ─ k
+  //       | |
+  //       n n+1
 
-  int wkx = n + std::min(relative_position_index, 2);
-  int wky = m + 3 - std::max(relative_position_index, 2);
-  Board result({n, m - 1}, {wkx, wky}, {n + 1, m});
+  int const bk_pos = relative_position_index / 5;
+  int const wk_pos = relative_position_index % 5;
+  int const wkdx = std::min(wk_pos, 2) - 1;
+  int const wkdy = 3 - std::max(wk_pos, 2);
+  int const wrx = n + 2 - bk_pos % 2;
+  int const wry = m;
+  int const bkx = n;
+  int const bky = m - 1 - bk_pos / 2;
+  Board result({bkx, bky}, {wrx + wkdx, wry + wkdy}, {wrx, wry});
 
   return result;
+}
+
+std::string relative_position_line(int relative_position_index, int row)
+{
+  std::string result;
+  Board board = get_relative_position(relative_position_index, 3, 3);
+  // We want to print:
+  //
+  // row=3   ·   ·
+  //     2 ·   R
+  //     1   ·   ·
+  //     0 ·   ·
+  //   col=0 1 2 3
+  //
+  // That means that wrx + dx = col and wry + dy = row.
+  int const wrx = Board::x_coord(board.white_rook());
+  int const wry = Board::y_coord(board.white_rook());
+  int const dx = 2 - wrx;
+  int const dy = 2 - wry;
+  // In (col, row) coordinates:
+  int const bkx = Board::x_coord(board.black_king()) + dx;
+  int const bky = Board::y_coord(board.black_king()) + dy;
+  int const wkx = Board::x_coord(board.white_king()) + dx;
+  int const wky = Board::y_coord(board.white_king()) + dy;
+  for (int col = 0; col < 4; ++col)
+  {
+    char const* square;
+    if (col > 0)
+      result += " ";
+    if (col == bkx && row == bky)
+      result += "k";
+    else if (col == wkx && row == wky)
+      result += "K";
+    else if (col == 2 && row == 2)
+      result += "R";
+    else if ((row + col) % 2 == 0)
+      result += "·";
+    else
+      result += " ";
+  }
+  return result;
+}
+
+void write_horizontal_line(char const* first, char const* rest, char const* line_piece)
+{
+  int const count = 2 * relative_position_width - 1;
+  for (int i = 0; i < relative_position_index_end; ++i)
+  {
+    std::cout << (i == 0 ? first : rest);
+    for (int j = 0; j < count; ++j)
+      std::cout << line_piece;
+  }
 }
 
 int main()
@@ -157,84 +247,123 @@ int main()
   // Get a pointer to the initial position.
 #if -0
   // Use initial_position initialized above with the position that is mate in the maximum number of ply.
-#elif 0
-  // Use the first legal position with the white rook on the board.
-  initial_position = graph.white_to_move_map().begin();
-  while (
-      !initial_position->is_legal() ||
-      Board{graph.get_index(initial_position)}.black_king() == Board{graph.get_index(initial_position)}.white_rook()
-  )
-    ++initial_position;
 #elif 1
-  for (int m = 2; m < 7; ++m)
-  {
-    std::vector<int> black_to_move_final_k_values;
-    std::vector<int> white_to_move_final_k_values;
+  int const m_begin = 2;
+  int const m_end = 7;
+  std::vector<std::vector<int>> black_to_move_final_k_values(m_end);
+  std::vector<std::vector<int>> white_to_move_final_k_values(m_end);
+  std::vector<int> max_stable_n_black_to_move(m_end);
+  std::vector<int> max_stable_n_white_to_move(m_end);
 
-    for (int relative_position_index = 0; relative_position_index < 5; ++relative_position_index)
+  for (int m = m_begin; m < m_end; ++m)
+  {
+    for (int relative_position_index = 0; relative_position_index < relative_position_index_end; ++relative_position_index)
     {
       int const offset = 2;     // Using a value of 2 keeps the white rook away from the virtual right edge.
       Board const largest_n_board = get_relative_position(relative_position_index, board_size_x - 1 - offset, m);
       {
         constexpr Color to_move = black;
-        largest_n_board.utf8art(std::cout, to_move, true);
-        std::cout << "\n";
+//        largest_n_board.utf8art(std::cout, to_move, true);
+//        std::cout << "\n";
         std::vector<int> ply_values;
         for (int n = 0; n < board_size_x - offset; ++n)
         {
           Board b = get_relative_position(relative_position_index, n, m);
           ply_values.push_back(graph.map_with_to_move<to_move.color_>()[b.as_index()].ply());
         }
-        int final_k = print_formula_table(m, ply_values);
-        black_to_move_final_k_values.push_back(final_k);
-        std::cout << "\n";
+        auto [final_k, stable_n] = print_formula_table(m, ply_values);
+        black_to_move_final_k_values[m].push_back(final_k);
+        if (relative_position_index == 0 || stable_n > max_stable_n_black_to_move[m])
+          max_stable_n_black_to_move[m] = stable_n;
+//        std::cout << "\n";
       }
       {
         constexpr Color to_move = white;
-        largest_n_board.utf8art(std::cout, to_move, true);
-        std::cout << "\n";
+//        largest_n_board.utf8art(std::cout, to_move, true);
+//        std::cout << "\n";
         std::vector<int> ply_values;
         for (int n = 0; n < board_size_x - offset; ++n)
         {
           Board b = get_relative_position(relative_position_index, n, m);
           ply_values.push_back(graph.map_with_to_move<to_move.color_>()[b.as_index()].ply());
         }
-        int final_k = print_formula_table(m, ply_values);
-        white_to_move_final_k_values.push_back(final_k);
-        std::cout << "\n";
+        auto [final_k, stable_n] = print_formula_table(m, ply_values);
+        white_to_move_final_k_values[m].push_back(final_k);
+        if (relative_position_index == 0 || stable_n > max_stable_n_white_to_move[m])
+          max_stable_n_white_to_move[m] = stable_n;
+//        std::cout << "\n";
       }
     }
-
-    std::cout << "m=" << m <<
-                    "   ┏━━━━━┯━━━━━┯━━━━━┯━━━━━┯━━━━━┓\n";
-    std::cout << "      ┃K   ·│· K ·│·   K│·   ·│·   ·┃\n";
-    std::cout << "  to  ┃  R  │  R  │  R  │  R K│  R  ┃\n";
-    std::cout << " move ┃k   ·│k   ·│k   ·│k   ·│k   K┃\n";
-    std::cout << "┏━━━━━╋━━━━━┿━━━━━┿━━━━━┿━━━━━┿━━━━━┫\n";
-    std::cout << "┃black┃";
-    char const* separator = "";
-    // Print "12+2n│12+2n│14+2n│12+2n│ 8+2n"
-    for (int k : black_to_move_final_k_values)
-    {
-      std::cout << separator << std::setw(2) << k << "+2n";
-      separator = "│";
-    }
-    std::cout <<                                     "┃\n";
-    std::cout << "┠─────╂─────┼─────┼─────┼─────┼─────┨\n";
-    std::cout << "┃white┃";
-    separator = "";
-    // Print "11+2n│13+2n│13+2n│ 9+2n│11+2n"
-    for (int k : white_to_move_final_k_values)
-    {
-      std::cout << separator << std::setw(2) << k << "+2n";
-      separator = "│";
-    }
-    std::cout <<                                     "┃\n";
-    std::cout << "┗━━━━━┻━━━━━┷━━━━━┷━━━━━┷━━━━━┷━━━━━┛\n";
   }
 
+  std::cout << "              ";
+  write_horizontal_line("┏", "┯", "━");
+  std::cout << "┓\n";
+
+  std::array<char const*, 4> row_header = {
+    "              ",
+    "              ",
+    "  to          ",
+    " move  n⩾   m "
+  };
+  for (int row = 0; row < 4; ++row)
+  {
+    std::cout << row_header[row];
+    char const* separator = "┃";
+    for (int relative_position_index = 0; relative_position_index < relative_position_index_end; ++relative_position_index)
+    {
+      std::cout << separator << relative_position_line(relative_position_index, 3 - row);
+      separator = "│";
+    }
+    std::cout << "┃\n";
+  }
+  std::cout <<     "┏━━━━━┳━━━┳━━━";
+  write_horizontal_line("╋", "┿", "━");
+  std::cout << "┫\n";
+  for (int m = m_begin; m < m_end; ++m)
+  {
+    std::cout << (m == (m_begin + m_end) / 2 ? "┃black┃" : "┃     ┃") <<
+      std::setw(2) << max_stable_n_black_to_move[m] << " ┃" << std::setw(2) << m << " ┃";
+    char const* separator = "";
+    for (int relative_position_index = 0; relative_position_index < relative_position_index_end; ++relative_position_index)
+    {
+      std::cout << separator << std::setw(5) << black_to_move_final_k_values[m][relative_position_index] << "  ";
+      separator = "│";
+    }
+    std::cout <<                                         "┃\n";
+    if (m < m_end - 1)
+    {
+      std::cout << "┃     ┠───╂───";
+      write_horizontal_line("╂", "┼", "─");
+      std::cout << "┨\n";
+    }
+  }
+  std::cout <<     "┠─────╂───╂───";
+  write_horizontal_line("╂", "┼", "─");
+  std::cout << "┨\n";
+  for (int m = m_begin; m < m_end; ++m)
+  {
+    std::cout << (m == (m_begin + m_end) / 2 ? "┃white┃" : "┃     ┃") <<
+      std::setw(2) << max_stable_n_white_to_move[m] << " ┃" << std::setw(2) << m << " ┃";
+    char const* separator = "";
+    for (int relative_position_index = 0; relative_position_index < relative_position_index_end; ++relative_position_index)
+    {
+      std::cout << separator << std::setw(5) << white_to_move_final_k_values[m][relative_position_index] << "  ";
+      separator = "│";
+    }
+    std::cout <<                                           "┃\n";
+    if (m < m_end - 1)
+    {
+      std::cout << "┃     ┠───╂───";
+      write_horizontal_line("╂", "┼", "─");
+      std::cout << "┨\n";
+    }
+  }
+  std::cout <<     "┗━━━━━┻━━━┻━━━";
+  write_horizontal_line("┻", "┷", "━");
+  std::cout << "┛\n";
 #endif
-  //return 0;
+  return 0;
 
   int n = 7;
   int m = 6;

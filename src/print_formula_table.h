@@ -1,3 +1,4 @@
 #include <vector>
+#include <utility>
 
-int print_formula_table(int m, std::vector<int> const& values);
+std::pair<int, int> print_formula_table(int m, std::vector<int> const& values);
