@@ -4,8 +4,10 @@ add_executable(infchess2
   Board.cxx
   Classification.cxx
   Color.cxx
+  Graph.cxx
   Info.cxx
   Square.cxx
+  parse_move.cxx
   infchess2.cxx
 )
 

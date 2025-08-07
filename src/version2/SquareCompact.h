@@ -38,4 +38,14 @@ class SquareCompact
   {
     return lhs.coordinates_ == rhs.coordinates_;
   }
+
+#ifdef CWDEBUG
+  void sane_coordinates() const
+  {
+    int x = x_coord();
+    int y = y_coord();
+    ASSERT(0 <= x && x < Size::board::x);
+    ASSERT(0 <= y && y < Size::board::y);
+  }
+#endif
 };

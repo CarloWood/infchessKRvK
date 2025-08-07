@@ -45,4 +45,22 @@ class KingSquare
 
   int x_coord() const { return block_index().x_coord() + block_square().x_coord(); }
   int y_coord() const { return block_index().y_coord() + block_square().y_coord(); }
+
+  // Used by the Board constructor.
+  coordinates_type coordinates() const { return coordinates_; }
+
+  friend bool operator==(KingSquare const& lhs, KingSquare const& rhs)
+  {
+    return lhs.coordinates_ == rhs.coordinates_;
+  }
+
+#ifdef CWDEBUG
+  void sane_coordinates() const
+  {
+    int x = x_coord();
+    int y = y_coord();
+    ASSERT(0 <= x && x < Size::board::x);
+    ASSERT(0 <= y && y < Size::board::y);
+  }
+#endif
 };

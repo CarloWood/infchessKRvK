@@ -19,6 +19,7 @@ class Info
 
  public:
   // Accessors.
+  Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }
   int ply() const { return mate_in_moves_; }
   Size::number_of_children_type number_of_children() const { return number_of_children_; }
