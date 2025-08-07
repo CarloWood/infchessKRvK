@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Size.h"
+#include "Board.h"
 #include "utils/has_print_on.h"
 
 // This class defines a print_on method.
@@ -11,19 +11,19 @@ using utils::has_print_on::operator<<;
 class Info
 {
  private:
-  Classification classification_;                            // The classification of this position.
+  Classification classification_;                             // The classification of this position.
   // The following are only valid if this position is legal.
-  Size::ply_type mate_in_moves_;                             // Mate follows after `mate_in_moves_` ply.
-  Size::number_of_children_type number_of_children_;         // The number of (legal) positions that can be reached from this position.
-  Size::number_of_children_type number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
+  Board::ply_type mate_in_moves_;                             // Mate follows after `mate_in_moves_` ply.
+  Board::number_of_children_type number_of_children_;         // The number of (legal) positions that can be reached from this position.
+  Board::number_of_children_type number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
 
  public:
   // Accessors.
   Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }
   int ply() const { return mate_in_moves_; }
-  Size::number_of_children_type number_of_children() const { return number_of_children_; }
-  Size::number_of_children_type number_of_visited_children() const { return number_of_visited_children_; }
+  Board::number_of_children_type number_of_children() const { return number_of_children_; }
+  Board::number_of_children_type number_of_visited_children() const { return number_of_visited_children_; }
 
  public:
   // Set in how many ply this position is mate.

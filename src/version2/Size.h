@@ -127,17 +127,7 @@ struct Size
   static constexpr unsigned int board_size_x = Bx * Px;
   static constexpr unsigned int board_size_y = By * Py;
 
-  static constexpr unsigned int max_ply_estimate = 256;
-  static constexpr unsigned int max_number_of_children_estimate = board_size_x + board_size_y + 6; // Number of rook moves plus number of
-                                                                                                   // king moves, including illegal ones.
-  static constexpr int ply_bits = utils::ceil_log2(max_ply_estimate);
-  static constexpr int number_of_children_bits = utils::ceil_log2(max_number_of_children_estimate);
-
  public:
   using block = RectangleSize<Bx, By>;                          // Size information for a Block.
   using board = RectangleSize<board_size_x, board_size_y>;      // Size information for a Board.
-
-  using classification_type = Classification::bits_type;
-  using ply_type = uint_type<ply_bits>;
-  using number_of_children_type = uint_type<number_of_children_bits>;
 };

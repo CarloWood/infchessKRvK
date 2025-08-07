@@ -22,8 +22,19 @@ class Board
   static constexpr encoded_type white_king_mask = WhiteKingSquare::mask;
   static constexpr encoded_type white_rook_mask = WhiteRookSquare::mask;
 
+  // Storing a ply.
+  static constexpr unsigned int max_ply_estimate = 256;
+  static constexpr int ply_bits = utils::ceil_log2(max_ply_estimate);
+  using ply_type = uint_type<ply_bits>;
+
+  // Number of child positions.
+  static constexpr unsigned int max_number_of_children =
+    Size::board::x + Size::board::y + 6;        // Number of rook moves plus number of king moves, including illegal ones.
+  static constexpr int number_of_children_bits = utils::ceil_log2(max_number_of_children);
+  using number_of_children_type = uint_type<number_of_children_bits>;
+
  private:
-  encoded_type encoded_;                // Compact representation of <BlackKingSquare><WhiteKingSquare><WhiteRookSquare>.
+  encoded_type encoded_;        // Compact representation of <BlackKingSquare><WhiteKingSquare><WhiteRookSquare>.
 
  public:
   Board(BlackKingSquare const& bk, WhiteKingSquare const& wk, WhiteRookSquare const& wr) :
