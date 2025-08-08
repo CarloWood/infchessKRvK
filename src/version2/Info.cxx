@@ -4,11 +4,11 @@
 #ifdef CWDEBUG
 void Info::print_on(std::ostream& os) const
 {
-  Classification classification_;                             // The classification of this position.
+  Classification classification_;               // The classification of this position.
   // The following are only valid if this position is legal.
-  Board::ply_type mate_in_moves_;                             // Mate follows after `mate_in_moves_` ply.
-  Board::number_of_children_type number_of_children_;         // The number of (legal) positions that can be reached from this position.
-  Board::number_of_children_type number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
+  ply_type mate_in_moves_;                      // Mate follows after `mate_in_moves_` ply.
+  degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
+  degree_type number_of_visited_children_;      // The number of children that visited this parent, during generation of the graph.
 
   os << '{';
   os << "classification:" << classification_ <<

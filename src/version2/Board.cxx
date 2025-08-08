@@ -274,6 +274,16 @@ bool Board::determine_draw(Color to_move) const
   return !(bk[x] == 0 && wk[x] == 2 && wk[y] == board_size_y - 1 && wr[x] == 0);
 }
 
+int Board::get_neighbors(Color to_move, Neighbor direction, neighbors_type& neighbors_out)
+{
+  int neighbors = 0;
+  encoded_type neighbor = encoded_;
+
+  neighbors_out[neighbors++] = neighbor;
+
+  return neighbors;
+}
+
 #if 0
 std::vector<Board> Board::get_succeeding_boards(Color to_move) const
 {

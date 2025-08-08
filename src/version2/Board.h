@@ -22,25 +22,28 @@ class Board
   static constexpr encoded_type white_king_mask = WhiteKingSquare::mask;
   static constexpr encoded_type white_rook_mask = WhiteRookSquare::mask;
 
-  // Storing a ply.
-  static constexpr unsigned int max_ply_estimate = 256;
-  static constexpr int ply_bits = utils::ceil_log2(max_ply_estimate);
-  using ply_type = uint_type<ply_bits>;
-
-  // Number of child positions.
-  static constexpr unsigned int max_number_of_children =
-    Size::board::x + Size::board::y + 6;        // Number of rook moves plus number of king moves, including illegal ones.
-  static constexpr int number_of_children_bits = utils::ceil_log2(max_number_of_children);
-  using number_of_children_type = uint_type<number_of_children_bits>;
+  // Maximum number of children or parents a node can have: the maximum occurs with white to move:
+  // Size::board::x - 1 horizontal rook moves, Size::board::y - 1 vertical rook moves and 8 possible king moves.
+  static constexpr unsigned int max_degree = Size::board::x + Size::board::y + 6;
+  using neighbors_type = std::array<Board, max_degree>;
 
  private:
   encoded_type encoded_;        // Compact representation of <BlackKingSquare><WhiteKingSquare><WhiteRookSquare>.
+
+  // Private constructor.
+  Board(encoded_type encoded) : encoded_(encoded) { }
 
  public:
   Board(BlackKingSquare const& bk, WhiteKingSquare const& wk, WhiteRookSquare const& wr) :
     encoded_((encoded_type{bk.coordinates()} << black_king_shift) |
              (encoded_type{wk.coordinates()} << white_king_shift) |
               encoded_type{wr.coordinates()}) { }
+
+  Board& operator=(encoded_type encoded)
+  {
+    encoded_ = encoded;
+    return *this;
+  }
 
   enum class Mate : std::uint8_t
   {
@@ -102,6 +105,16 @@ class Board
     encoded_ |= white_rook.coordinates();
   }
 
+  enum Neighbor {
+    children,
+    parents
+  };
+
+  template<color_type to_move>
+  int get_king_moves(Neighbor direction, neighbors_type& neighbors_out);
+
+  int get_neighbors(Color to_move, Neighbor direction, neighbors_type& neighbors_out);
+
   enum class Figure {
     none,
     black_king,
@@ -124,3 +137,50 @@ class Board
   // Used by black_has_moves, determine_check, determine_draw and get_succeeding_boards.
   std::tuple<Square, Square, Square> abbreviations() const;
 };
+
+template<color_type to_move>
+int Board::get_king_moves(Neighbor direction, neighbors_type& neighbors_out)
+{
+  int neighbors = 0;
+
+  KingSquare const original_king_square =
+    to_move == black ? static_cast<KingSquare const&>(black_king())
+                     : static_cast<KingSquare const&>(white_king());
+
+  int const original_x = original_king_square.x_coord();
+  int const original_y = original_king_square.y_coord();
+
+  // Loop over 8 possible new positions.
+  //
+  //   0 1 2
+  //   3   4
+  //   5 6 7
+  //
+  constexpr std::array<std::pair<int, int>, 8> dxdy = {
+    { 1, -1}, { 1, 0}, { 1, 1},
+    { 0, -1},          { 0, 1},
+    {-1, -1}, {-1, 0}, {-1, 1}
+  };
+
+  for (int d = 0; d < 9; ++d)
+  {
+    auto [dx, dy] = dxdy[d];
+    int x = original_x + dx;
+    int y = original_y + dy;
+
+    // The new position.
+    KingSquare king_square(x, y);
+
+    // Construct the new neighbor.
+    Board neighbor(encoded_);
+    if constexpr (to_move == black)
+      neighbor.set_black_king_square(king_square);
+    else
+      neighbor.set_white_king_square(king_square);
+
+    // Store it in the output array.
+    neighbors_out[neighbors++] = neighbor;
+  }
+
+  return neighbors;
+}

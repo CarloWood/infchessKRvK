@@ -10,20 +10,30 @@ using utils::has_print_on::operator<<;
 // The Board and whose move it is (the chess position) is defined by the context in which this object is being used.
 class Info
 {
+ public:
+  // Storing a ply.
+  static constexpr unsigned int max_ply_estimate = 256;
+  static constexpr int ply_bits = utils::ceil_log2(max_ply_estimate);
+  using ply_type = uint_type<ply_bits>;
+
+  // Storing the number of children (or parents) of a given node.
+  static constexpr int max_degree_bits = utils::ceil_log2(Board::max_degree);
+  using degree_type = uint_type<max_degree_bits>;
+
  private:
-  Classification classification_;                             // The classification of this position.
+  Classification classification_;               // The classification of this position.
   // The following are only valid if this position is legal.
-  Board::ply_type mate_in_moves_;                             // Mate follows after `mate_in_moves_` ply.
-  Board::number_of_children_type number_of_children_;         // The number of (legal) positions that can be reached from this position.
-  Board::number_of_children_type number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
+  ply_type mate_in_moves_;                      // Mate follows after `mate_in_moves_` ply.
+  degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
+  degree_type number_of_visited_children_;      // The number of children that visited this parent, during generation of the graph.
 
  public:
   // Accessors.
   Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }
   int ply() const { return mate_in_moves_; }
-  Board::number_of_children_type number_of_children() const { return number_of_children_; }
-  Board::number_of_children_type number_of_visited_children() const { return number_of_visited_children_; }
+  degree_type number_of_children() const { return number_of_children_; }
+  degree_type number_of_visited_children() const { return number_of_visited_children_; }
 
  public:
   // Set in how many ply this position is mate.
