@@ -6,11 +6,12 @@
 class KingSquare
 {
  public:
-  static constexpr int bits = BlockIndex::number_of_blocks_bits + Size::block::square_bits;
+  static constexpr int bits = Size::block::square_bits + BlockIndex::number_of_blocks_bits;
   using coordinates_type = uint_type<bits>;
   static constexpr int available_bits = std::numeric_limits<coordinates_type>::digits;
   static constexpr coordinates_type mask = create_mask<coordinates_type, bits>();
-  static constexpr int block_index_shift = Size::block::square_bits;
+  static constexpr int block_square_shift = BlockIndex::number_of_blocks_bits;
+  static constexpr coordinates_type block_index_mask = create_mask<coordinates_type, BlockIndex::number_of_blocks_bits>();
 
   static constexpr BlockIndex xy_to_block_index(int x, int y) { return {x, y}; };
   static constexpr BlockSquareCompact xy_to_block_square(int x, int y)
@@ -23,11 +24,15 @@ class KingSquare
 
   static constexpr coordinates_type block_index_square_to_coordinates(BlockIndex block_index, BlockSquareCompact square)
   {
-    return (block_index.index() << block_index_shift) | square.coordinates();
+    return block_index.index() | (square.coordinates() << block_square_shift);
   }
 
  private:
-  // <block_index><square_bits>
+  // <square_bits><block_index>
+  // Note: if block_index is only 1 bit (only 1 or 2 blocks in the board) then
+  // the least significant bit of <square_bits> will be used in the calculation
+  // of block index FieldSpec::stride of the y-coordinate (namely, the x-stride
+  // is a pre-shifted 1 as usual and the y-stride will be pre-shifted 2).
   coordinates_type coordinates_;
 
  public:
@@ -40,8 +45,8 @@ class KingSquare
   constexpr KingSquare(int x, int y) : coordinates_(block_index_square_to_coordinates(xy_to_block_index(x, y), xy_to_block_square(x, y))) { }
 
   // Accessors.
-  BlockIndex block_index() const { return coordinates_ >> block_index_shift; }
-  BlockSquareCompact block_square() const { return coordinates_ & Size::block::square_mask; }
+  BlockIndex block_index() const { return coordinates_ & block_index_mask; }
+  BlockSquareCompact block_square() const { return coordinates_ >> block_square_shift; }
 
   int x_coord() const { return block_index().x_coord() + block_square().x_coord(); }
   int y_coord() const { return block_index().y_coord() + block_square().y_coord(); }

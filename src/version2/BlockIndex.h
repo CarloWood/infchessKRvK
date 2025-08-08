@@ -10,6 +10,9 @@ class BlockIndex
   static constexpr unsigned int number_of_blocks = Px * Py;                             // Total number of blocks.
   static constexpr int number_of_blocks_bits = utils::ceil_log2(number_of_blocks);      // The number of bits required to store a BlockIndex.
   using index_type = uint_type<number_of_blocks_bits>;
+  static constexpr index_type mask = create_mask<index_type, number_of_blocks_bits>();
+  static constexpr index_type stride_x = index_type{1};
+  static constexpr index_type stride_y = index_type{1} * Px;
 
   static constexpr index_type xy_to_index(int x, int y) { return (y / Size::block::y) * Px + (x / Size::block::x); }
 

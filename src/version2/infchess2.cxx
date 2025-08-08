@@ -1,6 +1,7 @@
 #include "sys.h"
 #include "Graph.h"
 #include "parse_move.h"
+#include <bitset>
 #include "debug.h"
 
 int main()
@@ -87,6 +88,109 @@ int main()
   auto end2 = std::chrono::high_resolution_clock::now();
   auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
   std::cout << "Execution time: " << (duration2.count() / 1000000.0) << " seconds\n";
+
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::wr>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "x coordinate of white rook:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::wr>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "y coordinate of white rook:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::wkbi>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "Block index (x) of the white king:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::wkbi>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "Block index (y) of the white king:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::wkbc>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "x coordinate of white king's block coordinates:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::wkbc>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "y coordinate of white king's block coordinates:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::bkbi>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "Block index (x) of the black king:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::bkbi>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "Block index (y) of the black king:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::bkbc>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "x coordinate of black king's block coordinates:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+  {
+    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::bkbc>();
+    std::bitset<Board::available_bits> mask = fs.mask;
+    std::bitset<Board::available_bits> limit = fs.limit;
+    std::bitset<Board::available_bits> stride = fs.stride;
+    std::cout << "y coordinate of black king's block coordinates:\n";
+    std::cout << "mask  : " << mask << '\n';
+    std::cout << "limit : " << limit << '\n';
+    std::cout << "stride: " << stride << '\n';
+  }
+
+  return 0;
 
   Board board({4, 5}, {7, 3}, {0, 1});
   Color to_move(white);

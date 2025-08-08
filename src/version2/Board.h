@@ -16,6 +16,7 @@ class Board
  public:
   static constexpr int encoded_bits = BlackKingSquare::bits + WhiteKingSquare::bits + WhiteRookSquare::bits;
   using encoded_type = uint_type<encoded_bits>;
+  static constexpr int available_bits = std::numeric_limits<encoded_type>::digits;
   static constexpr int black_king_shift = WhiteRookSquare::bits + WhiteKingSquare::bits;
   static constexpr int white_king_shift = WhiteRookSquare::bits;
   static constexpr encoded_type black_king_mask = BlackKingSquare::mask;
@@ -133,9 +134,71 @@ class Board
   void debug_utf8art(libcwd::channel_ct const& debug_channel) const;
 #endif
 
- private:
+ public: //FIXME private:
   // Used by black_has_moves, determine_check, determine_draw and get_succeeding_boards.
   std::tuple<Square, Square, Square> abbreviations() const;
+
+  enum FieldType
+  {
+    bkbi,       // BlackKingSquare::block_index().
+    bkbc,       // BlackKingSquare::block_square().
+    wkbi,       // WhiteKingSquare::block_index().
+    wkbc,       // WhiteKingSquare::block_square().
+    wr          // WhiteRookSquare::coordinates().
+  };
+
+  // Return three values as function of the inputs xy, and FieldType.
+  struct FieldSpec
+  {
+    encoded_type mask;          // The bits of encoded_ that are used for this field.
+    encoded_type limit;         // The largest allowed value of this field (using the same bits as mask).
+                                // However, in the case this is the x-coordinate of bkbi/wkbi, the value
+                                // must be multiplied with the current y-coordinate plus one to get the
+                                // first value larger than the largest allowed value of this field.
+    encoded_type stride;        // The amount that has to be added to encoded_ in order to increment the field value by one.
+                                // In the case of bkbi/wkbi this might use the least significant bit of the field above it (bkbc/wkbc).
+  };
+
+  template<int xy, FieldType ft>
+  static consteval FieldSpec field_spec()
+  {
+    FieldSpec field_spec;
+    constexpr bool y_coord = xy == coordinates::y;
+
+    if constexpr (ft == bkbi)
+    {
+      field_spec.mask = BlockIndex::mask << black_king_shift;
+      field_spec.limit = (y_coord ? BlockIndex::number_of_blocks - 1 : BlockIndex::Px) << black_king_shift;
+      field_spec.stride = (y_coord ? BlockIndex::stride_y : BlockIndex::stride_x) << black_king_shift;
+    }
+    else if constexpr (ft == bkbc)
+    {
+      constexpr int block_square_shift = KingSquare::block_square_shift + black_king_shift;
+      field_spec.mask   = (y_coord ? Size::block::mask_y   : Size::block::mask_x)   << block_square_shift;
+      field_spec.limit  = (y_coord ? Size::block::limit_y  : Size::block::limit_x)  << block_square_shift;
+      field_spec.stride = (y_coord ? Size::block::stride_y : Size::block::stride_x) << block_square_shift;
+    }
+    else if (ft == wkbi)
+    {
+      field_spec.mask = BlockIndex::mask << white_king_shift;
+      field_spec.limit = (y_coord ? BlockIndex::number_of_blocks - 1 : BlockIndex::Px) << white_king_shift;
+      field_spec.stride = (y_coord ? BlockIndex::stride_y : BlockIndex::stride_x) << white_king_shift;
+    }
+    else if constexpr (ft == wkbc)
+    {
+      constexpr int block_square_shift = KingSquare::block_square_shift + white_king_shift;
+      field_spec.mask   = (y_coord ? Size::block::mask_y   : Size::block::mask_x)   << block_square_shift;
+      field_spec.limit  = (y_coord ? Size::block::limit_y  : Size::block::limit_x)  << block_square_shift;
+      field_spec.stride = (y_coord ? Size::block::stride_y : Size::block::stride_x) << block_square_shift;
+    }
+    else if constexpr (ft == wr)
+    {
+      field_spec.mask   = y_coord ? Size::board::mask_y   : Size::board::mask_x;
+      field_spec.limit  = y_coord ? Size::board::limit_y  : Size::board::limit_x;
+      field_spec.stride = y_coord ? Size::board::stride_y : Size::board::stride_x;
+    }
+    return field_spec;
+  }
 };
 
 template<color_type to_move>
@@ -143,44 +206,10 @@ int Board::get_king_moves(Neighbor direction, neighbors_type& neighbors_out)
 {
   int neighbors = 0;
 
-  KingSquare const original_king_square =
-    to_move == black ? static_cast<KingSquare const&>(black_king())
-                     : static_cast<KingSquare const&>(white_king());
+  Board neighbor(*this);
 
-  int const original_x = original_king_square.x_coord();
-  int const original_y = original_king_square.y_coord();
-
-  // Loop over 8 possible new positions.
-  //
-  //   0 1 2
-  //   3   4
-  //   5 6 7
-  //
-  constexpr std::array<std::pair<int, int>, 8> dxdy = {
-    { 1, -1}, { 1, 0}, { 1, 1},
-    { 0, -1},          { 0, 1},
-    {-1, -1}, {-1, 0}, {-1, 1}
-  };
-
-  for (int d = 0; d < 9; ++d)
-  {
-    auto [dx, dy] = dxdy[d];
-    int x = original_x + dx;
-    int y = original_y + dy;
-
-    // The new position.
-    KingSquare king_square(x, y);
-
-    // Construct the new neighbor.
-    Board neighbor(encoded_);
-    if constexpr (to_move == black)
-      neighbor.set_black_king_square(king_square);
-    else
-      neighbor.set_white_king_square(king_square);
-
-    // Store it in the output array.
-    neighbors_out[neighbors++] = neighbor;
-  }
+  // Store it in the output array.
+  neighbors_out[neighbors++] = neighbor;
 
   return neighbors;
 }

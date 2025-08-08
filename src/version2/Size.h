@@ -81,12 +81,21 @@ struct RectangleSize
   //   [ y-coord-bits ][ x-coord-bits ]
   //   <-coord_bits_y-><-coord_bits_x->
   //   <----------square_bits--------->
-  //   00000000000000001111111111111111     <-- coord_mask_x
+  //   00000000000000001111111111111111     <-- mask_x
+  //   00000000000000000000000000000001     <-- stride_x
+  //   11111111111111110000000000000000     <-- mask_y
+  //   00000000000000010000000000000000     <-- stride_y
   //   11111111111111111111111111111111     <-- square_mask
 
-  // Bit-mask for the x coordinate.
-  static constexpr coordinates_type coord_mask_x = create_mask<coordinates_type, coord_bits_x>();
-  // Bit-mask for a single square (two coordinates).
+  // Bit-mask, limit and stride for the x coordinate.
+  static constexpr coordinates_type mask_x   = create_mask<coordinates_type, coord_bits_x>();
+  static constexpr coordinates_type limit_x  = size_x - 1;
+  static constexpr coordinates_type stride_x = coordinates_type{1};
+  // Bit-mask, limit and stride for the y coordinate (pre-shifted).
+  static constexpr coordinates_type mask_y   = create_mask<coordinates_type, coord_bits_y>() << coord_bits_x;
+  static constexpr coordinates_type limit_y  = (size_y - 1)                                  << coord_bits_x;
+  static constexpr coordinates_type stride_y = coordinates_type{1}                           << coord_bits_x;
+  // Bit-mask for a single square (both coordinates).
   static constexpr coordinates_type square_mask = create_mask<coordinates_type, square_bits>();
 
   static constexpr coordinates_type xy_to_coordinates(int x, int y)
@@ -99,7 +108,7 @@ struct RectangleSize
   // Extract the x-coordinate from a coordinates_type.
   static constexpr int x_coord(coordinates_type square_coordinates)
   {
-    return square_coordinates & coord_mask_x;
+    return square_coordinates & mask_x;
   }
 
   // Extract the y-coordinate from a coordinates_type.
@@ -119,10 +128,10 @@ concept RectangleSizeConcept = requires(T rectangle_size) {
 struct Size
 {
  private:
-  static constexpr unsigned int Bx = 8;         // Width in squares of one "king block".
-  static constexpr unsigned int By = 8;         // Height in square of one "king block".
-  static constexpr unsigned int Px = 2;
-  static constexpr unsigned int Py = 2;
+  static constexpr unsigned int Bx = 5;         // Width in squares of one "king block".
+  static constexpr unsigned int By = 3;         // Height in square of one "king block".
+  static constexpr unsigned int Px = 3;
+  static constexpr unsigned int Py = 7;
 
   static constexpr unsigned int board_size_x = Bx * Px;
   static constexpr unsigned int board_size_y = By * Py;
