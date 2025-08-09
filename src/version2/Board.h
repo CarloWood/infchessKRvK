@@ -2,6 +2,7 @@
 
 #include "Color.h"
 #include "Square.h"
+#include "utils/macros.h"
 #include <cstdint>
 #include <functional>
 #include "debug.h"
@@ -62,8 +63,7 @@ class Board
 
   BlackKingSquare black_king() const
   {
-    encoded_type bk_square;
-    bk_square = encoded_ >> black_king_shift;
+    encoded_type bk_square = encoded_ >> black_king_shift;
     // The unused higher significant bits shoud be zero.
     ASSERT((bk_square & ~black_king_mask) == 0);
     return static_cast<BlackKingSquare::coordinates_type>(bk_square);
@@ -147,13 +147,31 @@ class Board
     wr          // WhiteRookSquare::coordinates().
   };
 
+  static char const* field_type_to_str(FieldType ft)
+  {
+    switch (ft)
+    {
+      AI_CASE_RETURN(bkbi);
+      AI_CASE_RETURN(bkbc);
+      AI_CASE_RETURN(wkbi);
+      AI_CASE_RETURN(wkbc);
+      AI_CASE_RETURN(wr);
+    }
+    AI_NEVER_REACHED
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, FieldType ft)
+  {
+    return os << Board::field_type_to_str(ft);
+  }
+
   // Return three values as function of the inputs xy, and FieldType.
   struct FieldSpec
   {
     encoded_type mask;          // The bits of encoded_ that are used for this field.
     encoded_type limit;         // The largest allowed value of this field (using the same bits as mask).
                                 // However, in the case this is the x-coordinate of bkbi/wkbi, the value
-                                // must be multiplied with the current y-coordinate plus one to get the
+                                // must be multiplied with the current block y-coordinate plus one to get the
                                 // first value larger than the largest allowed value of this field.
     encoded_type stride;        // The amount that has to be added to encoded_ in order to increment the field value by one.
                                 // In the case of bkbi/wkbi this might use the least significant bit of the field above it (bkbc/wkbc).
@@ -198,6 +216,69 @@ class Board
       field_spec.stride = y_coord ? Size::board::stride_y : Size::board::stride_x;
     }
     return field_spec;
+  }
+
+  template<int xy, FieldType ft>
+  bool inc_field()
+  {
+    DoutEntering(dc::notice, "Board::inc_field<" << xy << ", " << ft << ">() with this = [" << *this << "]");
+
+    constexpr FieldSpec fs = field_spec<xy, ft>();
+    // In the case of a block index' x-coordinate, the limit is given as:
+    //               __ actual limit.
+    //              /
+    // ⋮ ⋮   ⋮   ⋮ v ⋮
+    //   +---+---+---+
+    // 2 | 6 | 7 | 8 |
+    //   +---+---+---+
+    // 1 | 3 | 4 | 5 |
+    //   +---+---+---+
+    // 0 | 0 | 1 | 2 | 3 = fs.limit
+    // ^ `---+---+---'
+    // |   0   1   2
+    // |   `---.---'
+    // |       |
+    // | x-coordinate
+    // y-coordinate
+    encoded_type limit = fs.limit;
+    if constexpr ((ft == bkbi || ft == wkbi) && xy == coordinates::x)
+    {
+      KingSquare king_square = ft == bkbi ? static_cast<KingSquare const&>(black_king()) : static_cast<KingSquare const&>(white_king());
+      auto block_y = king_square.block_index().index() / BlockIndex::Px;
+      limit = fs.limit * block_y + (fs.limit - fs.stride);
+    }
+    if ((encoded_ & fs.mask) + fs.stride > limit)
+    {
+      Dout(dc::notice, "Returning false");
+      return false;
+    }
+    encoded_ += fs.stride;
+    Dout(dc::notice, "encoded_ = " << *this);
+    return true;
+  }
+
+  template<int xy, FieldType ft>
+  bool dec_field()
+  {
+    DoutEntering(dc::notice, "Board::dec_field<" << xy << ", " << ft << ">() with this = [" << *this << "]");
+
+    constexpr FieldSpec fs = field_spec<xy, ft>();
+    encoded_type limit = 0;
+    if constexpr ((ft == bkbi || ft == wkbi) && xy == coordinates::x)
+    {
+      encoded_type shifted_block_index = encoded_ & fs.mask;
+      encoded_type shifted_block_y = (shifted_block_index / BlockIndex::Px) & fs.mask;
+      limit = BlockIndex::Px * shifted_block_y;
+    }
+    // Test if we can subtract fs.stride from the current block index (encoded_ & fs.mask) without becoming less than limit.
+    if ((encoded_ & fs.mask) < limit + fs.stride)
+    {
+      Dout(dc::notice, "Returning false");
+      return false;
+    }
+    encoded_ -= fs.stride;
+    Dout(dc::notice, "encoded_ = " << *this);
+    return true;
   }
 };
 

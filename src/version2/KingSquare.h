@@ -2,6 +2,10 @@
 
 #include "BlockIndex.h"
 #include "BlockSquareCompact.h"
+#include "utils/has_print_on.h"
+
+// This class defines a print_on method.
+using utils::has_print_on::operator<<;
 
 class KingSquare
 {
@@ -67,5 +71,7 @@ class KingSquare
     ASSERT(0 <= x && x < Size::board::x);
     ASSERT(0 <= y && y < Size::board::y);
   }
+
+  void print_on(std::ostream& os) const;
 #endif
 };

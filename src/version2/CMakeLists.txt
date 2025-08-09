@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.14...4.0.2)
 
 add_executable(infchess2
+  BlockIndex.cxx
   Board.cxx
   Classification.cxx
   Color.cxx
   Graph.cxx
   Info.cxx
+  KingSquare.cxx
   Square.cxx
   parse_move.cxx
   infchess2.cxx

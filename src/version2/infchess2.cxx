@@ -20,6 +20,7 @@ int main()
   int const block_size_y = Size::block::y;
   Dout(dc::notice, "Block size: " << block_size_x << "x" << block_size_y);
 
+#if 0
   // Construct the initial graph with all positions that are already mate.
   auto start2 = std::chrono::high_resolution_clock::now();
 
@@ -189,9 +190,53 @@ int main()
     std::cout << "limit : " << limit << '\n';
     std::cout << "stride: " << stride << '\n';
   }
+#endif
+
+#if 0
+  // Board::inc_field<0, bkbi>() with this = [{black king:(10, 3), w
+  Board board({0, 0}, {4, 20}, {0, 0});
+  board.utf8art(std::cout, black);
+  board.dec_field<coordinates::x, Board::wkbi>();
+  board.utf8art(std::cout, black);
+
+#elif 0
+  Board board({0, 0}, {7, 10}, {7, 10});
+  do
+  {
+    Board b1(board);
+    Dout(dc::notice, "Copied board --> b1 : " << b1);
+    do
+    {
+      Board b2(b1);
+      Dout(dc::notice, "Copied b1 --> b2 : " << b2);
+      do
+      {
+        Board b3(b2);
+        Dout(dc::notice, "Copied b2 --> b3 : " << b3);
+        b3.utf8art(std::cout, black);
+        while (b3.inc_field<coordinates::x, Board::wkbc>())
+          b3.utf8art(std::cout, black);
+      }
+      while (b2.inc_field<coordinates::x, Board::wkbi>());
+    }
+    while (b1.inc_field<coordinates::y, Board::wkbc>());
+  }
+  while (board.inc_field<coordinates::y, Board::wkbi>());
+#else
+  Board board({14, 20}, {0, 0}, {14, 20});
+  do
+  {
+    Board b1(board);
+    b1.utf8art(std::cout, white);
+    while (b1.dec_field<coordinates::y, Board::wr>())
+      b1.utf8art(std::cout, white);
+  }
+  while (board.dec_field<coordinates::x, Board::wr>());
+#endif
 
   return 0;
 
+#if 0
   Board board({4, 5}, {7, 3}, {0, 1});
   Color to_move(white);
   int ply = -1;
@@ -221,4 +266,5 @@ int main()
 
     to_move = to_move.opponent();
   }
+#endif
 }
