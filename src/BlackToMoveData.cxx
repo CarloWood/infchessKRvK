@@ -26,7 +26,7 @@ void BlackToMoveData::add_edges(black_to_move_nodes_type::iterator const& curren
 
 void BlackToMoveData::set_maximum_ply_on_parents(std::vector<white_to_move_nodes_type::iterator>& parents)
 {
-  // Only call set_maximum_ply_on_parents on a position that already has its `mate_in_moves_` detemined.
+  // Only call set_maximum_ply_on_parents on a position that already has its `mate_in_moves_` determined.
   ASSERT(mate_in_moves_ != -1);
   // Any parent position can not be mate in more than `mate_in_moves_ + 1` ply, because in the parent
   // position it is white to move and white would pick the move that leads to mate in the least number
