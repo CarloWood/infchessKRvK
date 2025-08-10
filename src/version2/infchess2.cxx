@@ -192,12 +192,14 @@ int main()
   }
 #endif
 
-#if 0
+#if 1
   // Board::inc_field<0, bkbi>() with this = [{black king:(10, 3), w
-  Board board({0, 0}, {4, 20}, {0, 0});
-  board.utf8art(std::cout, black);
-  board.dec_field<coordinates::x, Board::wkbi>();
-  board.utf8art(std::cout, black);
+  Board board({14, 20}, {12, 18}, {7, 1});
+  board.utf8art(std::cout, white);
+  Board::neighbors_type neighbors;
+  int n = board.generate_neighbors(white, Board::children, neighbors);
+  for (int i = 0; i < n; ++i)
+    neighbors[i].utf8art(std::cout, black);
 
 #elif 0
   Board board({0, 0}, {7, 10}, {7, 10});

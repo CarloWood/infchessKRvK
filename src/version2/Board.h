@@ -29,6 +29,41 @@ class Board
   static constexpr unsigned int max_degree = Size::board::x + Size::board::y + 6;
   using neighbors_type = std::array<Board, max_degree>;
 
+  // The relationship between two positions where one can be reached from the other.
+  // Where `position` means `Board` plus an externally provided `to_move`.
+  enum Relation
+  {
+    children,           // Positions that can be reached from the current position.
+    parents             // Positions from which the current position can be reached.
+  };
+
+  // Used as index into an array.
+  enum Direction
+  {
+    North,              // Towards larger y-coordinate values.
+    East,               // Towards larger x-coordinate values.
+    South,              // Towards the bottom edge.
+    West                // Towards the left edge.
+  };
+
+  enum FieldType
+  {
+    bkbi,               // BlackKingSquare::block_index().
+    bkbc,               // BlackKingSquare::block_square().
+    wkbi,               // WhiteKingSquare::block_index().
+    wkbc,               // WhiteKingSquare::block_square().
+    wr                  // WhiteRookSquare::coordinates().
+  };
+
+  // Used for printing a board.
+  enum class Figure
+  {
+    none,
+    black_king,
+    white_king,
+    white_rook
+  };
+
  private:
   encoded_type encoded_;        // Compact representation of <BlackKingSquare><WhiteKingSquare><WhiteRookSquare>.
 
@@ -36,6 +71,7 @@ class Board
   Board(encoded_type encoded) : encoded_(encoded) { }
 
  public:
+  Board() = default;
   Board(BlackKingSquare const& bk, WhiteKingSquare const& wk, WhiteRookSquare const& wr) :
     encoded_((encoded_type{bk.coordinates()} << black_king_shift) |
              (encoded_type{wk.coordinates()} << white_king_shift) |
@@ -106,22 +142,10 @@ class Board
     encoded_ |= white_rook.coordinates();
   }
 
-  enum Neighbor {
-    children,
-    parents
-  };
-
   template<color_type to_move>
-  int get_king_moves(Neighbor direction, neighbors_type& neighbors_out);
-
-  int get_neighbors(Color to_move, Neighbor direction, neighbors_type& neighbors_out);
-
-  enum class Figure {
-    none,
-    black_king,
-    white_king,
-    white_rook
-  };
+  void generate_king_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors);
+  void generate_rook_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors);
+  int generate_neighbors(Color to_move, Relation relation, neighbors_type& neighbors_out);
 
   static void utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Figure (Square)> select_figure);
   void utf8art(std::ostream& os, Color to_move, bool xyz = false) const;
@@ -137,15 +161,6 @@ class Board
  public: //FIXME private:
   // Used by black_has_moves, determine_check, determine_draw and get_succeeding_boards.
   std::tuple<Square, Square, Square> abbreviations() const;
-
-  enum FieldType
-  {
-    bkbi,       // BlackKingSquare::block_index().
-    bkbc,       // BlackKingSquare::block_square().
-    wkbi,       // WhiteKingSquare::block_index().
-    wkbc,       // WhiteKingSquare::block_square().
-    wr          // WhiteRookSquare::coordinates().
-  };
 
   static char const* field_type_to_str(FieldType ft)
   {
@@ -280,17 +295,251 @@ class Board
     Dout(dc::notice, "encoded_ = " << *this);
     return true;
   }
+
+  template<int xy, FieldType ft>
+  void reset_low_field()
+  {
+    static_assert(ft != bkbi && ft != wkbi, "This function doesn't work for block-index coordinates.");
+    constexpr FieldSpec fs = field_spec<xy, ft>();
+    encoded_ &= ~fs.mask;
+  }
+
+  template<int xy, FieldType ft>
+  void reset_high_field()
+  {
+    static_assert(ft != bkbi && ft != wkbi, "This function doesn't work for block-index coordinates.");
+    constexpr FieldSpec fs = field_spec<xy, ft>();
+    encoded_ &= ~fs.mask;
+    encoded_ |= fs.limit;
+  }
+
+  template<int xy, color_type color>
+  bool inc_king()
+  {
+    constexpr FieldType kbc = color == black ? bkbc : wkbc;
+    constexpr FieldType kbi = color == black ? bkbi : wkbi;
+
+    // Try to step within the current block.
+    if (inc_field<xy, kbc>())
+      return true;
+
+    // We are at the edge of the current block; increment the block index.
+    if (!inc_field<xy, kbi>())
+      return false;
+
+    // Reset the block coordinate to zero.
+    reset_low_field<xy, kbc>();
+    return true;
+  }
+
+  template<int xy, color_type color>
+  bool dec_king()
+  {
+    constexpr FieldType kbc = color == black ? bkbc : wkbc;
+    constexpr FieldType kbi = color == black ? bkbi : wkbi;
+
+    // Try to step within the current block.
+    if (dec_field<xy, kbc>())
+      return true;
+
+    // We are at the edge of the current block; decrement the block index.
+    if (!dec_field<xy, kbi>())
+      return false;
+
+    // Reset the block coordinate to the block size.
+    reset_high_field<xy, kbc>();
+    return true;
+  }
 };
 
 template<color_type to_move>
-int Board::get_king_moves(Neighbor direction, neighbors_type& neighbors_out)
+void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors)
 {
-  int neighbors = 0;
+  using namespace coordinates;
 
-  Board neighbor(*this);
+  // Get the coordinates of all pieces.
+  auto const [bk, wk, wr] = abbreviations();
 
-  // Store it in the output array.
-  neighbors_out[neighbors++] = neighbor;
+  // Assume the current king is at `k`, and the enemy king is on A through P, or somewhere else:
+  //        .---+---+---+---+---+---+---+---.
+  //        |   |   |   |   |   |   |   |   |
+  //        +---+---+---+---+---+---+---+---+
+  //        |   |   |   |   |   |   |   |   |
+  //        +---+---+---+---+---+---+---+---+
+  // dy = 2 |   | A | B | C | D | E |   |   |
+  //        +---+---+---+---+---+---+---+---+
+  //      1 |   | F |   |   |   | G |   |   |
+  //        +---+---+---+---+---+---+---+---+
+  //      0 |   | H |   | k |   | I |   |   |
+  //        +---+---+---+---+---+---+---+---+
+  //     -1 |   | J |   |   |   | K |   |   |
+  //        +---+---+---+---+---+---+---+---+
+  //     -2 |   | L | M | N | O | P |   |   |
+  //        +---+---+---+---+---+---+---+---+
+  //        |   |   |   |   |   |   |   |   |
+  //        `---+---+---+---+---+---+---+---'
+  //        dx = -2  -1   0   1   2
+  //
+  //
+  // Calculate the difference between the x-coordinates of the two kings as the other king minus the king that is to move.
+  // We encode the deltas as 'delta + 2' stored in an unsigned int.
+  std::array<unsigned int, 2> xy_encoded_delta;
+  if constexpr (to_move == black)
+    xy_encoded_delta = { static_cast<unsigned int>(wk[x] - bk[x] + 2), static_cast<unsigned int>(wk[y] - bk[y] + 2) };
+  else
+    xy_encoded_delta = { static_cast<unsigned int>(bk[x] - wk[x] + 2), static_cast<unsigned int>(bk[y] - wk[y] + 2) };
 
-  return neighbors;
+  // Next construct an uint64_t bit-mask with a single bit set iff the enemy king
+  // is on one of the squares A through P, encoded as an 8x8 square as follows:
+  //
+  // msb
+  //  |
+  //  v 43210 <-- xy_encoded_delta[x]
+  //  00000000
+  //  00000000
+  //  00EDCBA0 4
+  //  00G000F0 3
+  //  00I000H0 2
+  //  00K000J0 1
+  //  00PONML0 0
+  //  00000000
+  //         ^ ^
+  //         | `-- xy_encoded_delta[y]
+  //        lsb
+  //                        ...000EDCBA000G000F000I000H000K000J000PONML
+  constexpr uint64_t blocked_by_L = 0b\
+00000000\
+00000000\
+00000000\
+00000000\
+00000111\
+00000101\
+00000111;
+  constexpr uint64_t N = 0b\
+00000000\
+00000000\
+00001000\
+00001000\
+00000000\
+00000000\
+00000000;
+  constexpr uint64_t E = 0b\
+00000000\
+00000000\
+00000000\
+00011000\
+00000000\
+00000000\
+00000000;
+  constexpr uint64_t S = 0b\
+00000000\
+00000000\
+00000000\
+00001000\
+00001000\
+00000000\
+00000000;
+  constexpr uint64_t W = 0b\
+00000000\
+00000000\
+00000000\
+00001100\
+00000000\
+00000000\
+00000000;
+  constexpr uint64_t NE = 0b\
+00000000\
+00000000\
+00010000\
+00001000\
+00000000\
+00000000\
+00000000;
+  constexpr uint64_t NW = 0b\
+00000000\
+00000000\
+00000100\
+00001000\
+00000000\
+00000000\
+00000000;
+  constexpr uint64_t SE = 0b\
+00000000\
+00000000\
+00000000\
+00001000\
+00010000\
+00000000\
+00000000;
+  constexpr uint64_t SW = 0b\
+00000000\
+00000000\
+00000000\
+00001000\
+00000100\
+00000000\
+00000000;
+
+  uint64_t blocked_squares =
+    (xy_encoded_delta[x] <= 4U && xy_encoded_delta[y] <= 4U)                    // If the enemy king on A through P,
+        ? blocked_by_L << (xy_encoded_delta[x] + 8 * xy_encoded_delta[y])       // encode the deltas.
+        : 0;                                                                    // Otherwise, if the enemy king is far away, use zero.
+
+  // Prepare the fourth positions where the king steps North, East, South and West.
+  std::array<Board, 4> neighbor = {{ {*this}, {*this}, {*this}, {*this} }};
+
+  // The block-index and block-coordinates field types of the king that is to move.
+  constexpr int kbi = to_move == black ? bkbi : wkbi;
+  constexpr int kbc = to_move == black ? bkbc : wkbc;
+
+  // Attempt to calculate the positions that we get by stepping North, East, South or West with the king.
+  std::array<bool, 4> success = {
+    neighbor[North].inc_king<y, to_move>(),
+    neighbor[East].inc_king<x, to_move>(),
+    neighbor[South].dec_king<y, to_move>(),
+    neighbor[West].dec_king<x, to_move>()
+  };
+
+  // If the step was successful (we didn't step outside the board) and now we're not next to the other king
+  // or (if we're black) we put ourself in check, add the result to the output array.
+  if (success[North])                   // Did not step off the board?
+  {
+    if (!(blocked_squares & N))       // Did not step next to the other king or put ourself in check?
+      neighbors_out[neighbors++] = neighbor[North];
+    // Next step West and East to reach North-West and North-East.
+    Board neighbor_north_east(neighbor[North]);
+    Board neighbor_north_west(neighbor[North]);
+    bool success_north_east = neighbor_north_east.inc_king<x, to_move>();
+    bool success_north_west = neighbor_north_west.dec_king<x, to_move>();
+    // Add the new positions if we didn't step off the board nor next to the enemy king or put ourself in check.
+    if (success_north_east && !(blocked_squares & NE))
+      neighbors_out[neighbors++] = neighbor_north_east;
+    if (success_north_west && !(blocked_squares & NW))
+      neighbors_out[neighbors++] = neighbor_north_west;
+  }
+  if (success[East])
+  {
+    if (!(blocked_squares & E))
+      neighbors_out[neighbors++] = neighbor[East];
+  }
+  if (success[South])
+  {
+    if (!(blocked_squares & S))
+      neighbors_out[neighbors++] = neighbor[South];
+    // Next step West and East to reach North-West and North-East.
+    Board neighbor_south_east(neighbor[South]);
+    Board neighbor_south_west(neighbor[South]);
+    bool success_south_east = neighbor_south_east.inc_king<x, to_move>();
+    bool success_south_west = neighbor_south_west.dec_king<x, to_move>();
+    // Add the new positions if we didn't step off the board nor next to the enemy king or put ourself in check.
+    if (success_south_east && !(blocked_squares & SE))
+      neighbors_out[neighbors++] = neighbor_south_east;
+    if (success_south_west && !(blocked_squares & SW))
+      neighbors_out[neighbors++] = neighbor_south_west;
+  }
+  if (success[West])
+  {
+    if (!(blocked_squares & W))
+      neighbors_out[neighbors++] = neighbor[West];
+  }
 }

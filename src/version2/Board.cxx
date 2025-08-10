@@ -274,12 +274,79 @@ bool Board::determine_draw(Color to_move) const
   return !(bk[x] == 0 && wk[x] == 2 && wk[y] == board_size_y - 1 && wr[x] == 0);
 }
 
-int Board::get_neighbors(Color to_move, Neighbor direction, neighbors_type& neighbors_out)
+void Board::generate_rook_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors)
+{
+  // Get the current x and y coordinates of the white rook and the white king.
+  int wrx = white_rook().x_coord();
+  int wry = white_rook().y_coord();
+  int wkx = white_king().x_coord();
+  int wky = white_king().y_coord();
+
+  // Calculate the distance to the board edge for each direction.
+  std::array<unsigned int, 4> steps = {
+    Size::board::y - 1 - wry,           // The number of squares North of the white rook.
+    Size::board::x - 1 - wrx,           // The number of squares East of the white rook.
+    static_cast<unsigned int>(wry),     // The number of squares South of the white rook.
+    static_cast<unsigned int>(wrx)      // The number of squares West of the white rook.
+  };
+  // Correct these distances for a potential block by the white king.
+  if (wrx == wkx)
+  {
+    // Only one coordinate can be the same.
+    ASSERT(wky != wry);
+    if (wky > wry)      // Is the king North of the rook?
+      steps[North] = wky - wry - 1;
+    else                // The king is South of the rook.
+      steps[South] = wry - wky - 1;
+  }
+  else if (wry == wky)
+  {
+    // Only one coordinate can be the same.
+    ASSERT(wkx != wrx);
+    if (wkx > wrx)      // Is the king East of the rook?
+      steps[East] = wkx - wrx - 1;
+    else                // The king is West of the rook.
+      steps[West] = wrx - wkx - 1;
+  }
+
+  for (int dir = North; dir <= West; ++dir)
+  {
+    Board neighbor(*this);      // Begin with the original position.
+    for (unsigned int step = 0; step < steps[dir]; ++step)
+    {
+      // Move the white rook one step further in the direction dir.
+      switch (dir)
+      {
+        case North:
+          neighbor.inc_field<1, wr>();
+          break;
+        case East:
+          neighbor.inc_field<0, wr>();
+          break;
+        case South:
+          neighbor.dec_field<1, wr>();
+          break;
+        case West:
+          neighbor.dec_field<0, wr>();
+          break;
+      }
+      // Store the current position in the output array.
+      neighbors_out[neighbors++] = neighbor;
+    }
+  }
+}
+
+int Board::generate_neighbors(Color to_move, Relation relation, neighbors_type& neighbors_out)
 {
   int neighbors = 0;
-  encoded_type neighbor = encoded_;
 
-  neighbors_out[neighbors++] = neighbor;
+  if (to_move == black)
+    generate_king_moves<black>(relation, neighbors_out, neighbors);
+  else
+  {
+    generate_king_moves<white>(relation, neighbors_out, neighbors);
+    generate_rook_moves(relation, neighbors_out, neighbors);
+  }
 
   return neighbors;
 }

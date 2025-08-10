@@ -21,9 +21,9 @@ class Info
   using degree_type = uint_type<max_degree_bits>;
 
  private:
+  ply_type mate_in_moves_;                      // Mate follows after `mate_in_moves_` ply.
   Classification classification_;               // The classification of this position.
   // The following are only valid if this position is legal.
-  ply_type mate_in_moves_;                      // Mate follows after `mate_in_moves_` ply.
   degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
   degree_type number_of_visited_children_;      // The number of children that visited this parent, during generation of the graph.
 
