@@ -34,16 +34,16 @@ int main()
   // Generate all possible positions.
   graph2.classify();
 
-  std::vector<Graph::info_nodes_type::iterator> already_mate2;
+  std::vector<InfoIndex> already_mate2;
 
   // Black to move positions.
   {
     Graph::info_nodes_type& black_to_move = graph2.black_to_move();
     total_positions2 = 0;
-    for (Graph::info_nodes_type::iterator current_info = black_to_move.begin();
-        current_info != black_to_move.end(); ++current_info)
+    for (Graph::info_nodes_type::index_type current_info_index = black_to_move.ibegin();
+        current_info_index != black_to_move.iend(); ++current_info_index)
     {
-      Info const& info = *current_info;
+      Info const& info = black_to_move[current_info_index];
       Classification const& pc = info.classification();
       if (!pc.is_legal())
         continue;
@@ -55,7 +55,7 @@ int main()
       if (pc.is_mate())
       {
         ++mate_positions2;
-        already_mate2.push_back(current_info);
+        already_mate2.push_back(current_info_index);
       }
       if (pc.is_stalemate())
         ++stalemate_positions2;
@@ -65,10 +65,10 @@ int main()
   {
     Graph::info_nodes_type& white_to_move = graph2.white_to_move();
     // Run over all legal positions in white_to_move_map.
-    for (Graph::info_nodes_type::iterator current_info = white_to_move.begin();
-        current_info != white_to_move.end(); ++current_info)
+    for (Graph::info_nodes_type::index_type current_info_index = white_to_move.ibegin();
+        current_info_index != white_to_move.iend(); ++current_info_index)
     {
-      Info const& info = *current_info;
+      Info const& info = white_to_move[current_info_index];
       Classification const& pc = info.classification();
       if (!pc.is_legal())
         continue;
@@ -88,6 +88,20 @@ int main()
   auto end2 = std::chrono::high_resolution_clock::now();
   auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
   std::cout << "Execution time: " << (duration2.count() / 1000000.0) << " seconds\n";
+
+  // Run over all positions that are already mate (as per the classification)
+  // and mark all position that can reach those as mate in 1 ply.
+  std::vector<Board> white_to_move_parents2;
+  Graph::info_nodes_type& black_to_move = graph2.black_to_move();
+  for (Graph::info_nodes_type::index_type info_index : already_mate2)
+  {
+    Info& black_to_move_info = black_to_move[info_index];
+    black_to_move_info.set_mate_in_ply(0);
+
+    Board b(info_index);
+    b.utf8art(std::cout, black);
+//FIXME    black_to_move_info.set_maximum_ply_on_parents(white_to_move_parents2);
+  }
 
 #if 0
   // Board::inc_field<0, bkbi>() with this = [{black king:(10, 3), w
