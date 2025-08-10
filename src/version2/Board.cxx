@@ -469,6 +469,7 @@ std::u8string_view const corner     = u8" ┏";
 std::u8string_view const left_side  = u8" ┃";
 std::u8string_view const bcorner    = u8" ┗";
 std::u8string_view const top_side   = u8"━";
+std::u8string_view const marker     = u8" X";
 } // namespace
 
 // Write std::u8string_view to an ostream as-is.
@@ -492,6 +493,12 @@ void print_king_to(std::ostream& os, Color color)
 void print_rook_to(std::ostream& os)
 {
   std::u8string_view const& sv = white == Black ? black_rook : white_rook;
+  os.write(reinterpret_cast<const char*>(sv.data()), sv.size());
+}
+
+void print_marker_to(std::ostream& os)
+{
+  std::u8string_view const& sv = marker;
   os.write(reinterpret_cast<const char*>(sv.data()), sv.size());
 }
 
@@ -528,6 +535,8 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Fig
           print_king_to(os, white);
         else if (figure == Figure::white_rook)
           print_rook_to(os);
+        else if (figure == Figure::marker)
+          print_marker_to(os);
         else
           print_none_to(os, (x + y) % 2 == 1 ? black : white);
       }
@@ -588,16 +597,18 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Fig
   }
 }
 
-void Board::utf8art(std::ostream& os, Color to_move, bool xyz) const
+void Board::utf8art(std::ostream& os, Color to_move, bool xyz, Square marker) const
 {
   auto [bk, wk, wr] = Board::abbreviations();
-  Board::utf8art(os, to_move, xyz, [bk, wk, wr, this](Square pos){
+  Board::utf8art(os, to_move, xyz, [bk, wk, wr, marker, this](Square pos){
     if (pos == bk)
       return Figure::black_king;
     else if (pos == wk)
       return Figure::white_king;
     else if (pos == wr)
       return Figure::white_rook;
+    else if (pos == marker)
+      return Figure::marker;
     else
       return Figure::none;
   });
@@ -643,7 +654,7 @@ std::string Board::get_move(Board const& to_board)
 #endif
 
 #ifdef CWDEBUG
-void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
+void Board::debug_utf8art(libcwd::channel_ct const& debug_channel, Square marker) const
 {
   if (!debug_channel.is_on())
     return;
@@ -684,6 +695,8 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel) const
         print_king_to(oss, white);
       else if (square_coordinates == wr)
         print_rook_to(oss);
+      else if (square_coordinates == marker)
+        print_marker_to(oss);
       else
         print_none_to(oss, (x + y) % 2 == 1 ? black : white);
     }

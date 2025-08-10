@@ -3,6 +3,7 @@
 #include "Color.h"
 #include "Square.h"
 #include "utils/macros.h"
+#include "utils/is_between.h"
 #include <cstdint>
 #include <functional>
 #include "debug.h"
@@ -61,7 +62,8 @@ class Board
     none,
     black_king,
     white_king,
-    white_rook
+    white_rook,
+    marker
   };
 
  private:
@@ -148,14 +150,14 @@ class Board
   int generate_neighbors(Color to_move, Relation relation, neighbors_type& neighbors_out);
 
   static void utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Figure (Square)> select_figure);
-  void utf8art(std::ostream& os, Color to_move, bool xyz = false) const;
+  void utf8art(std::ostream& os, Color to_move, bool xyz = false, Square marker = Square{-1, -1}) const;
 
 #ifdef CWDEBUG
   // Allow printing a Board to an ostream.
   void print_on(std::ostream& os) const;
 
   // Print the board as utf8art with Dout.
-  void debug_utf8art(libcwd::channel_ct const& debug_channel) const;
+  void debug_utf8art(libcwd::channel_ct const& debug_channel, Square marker = Square{-1, -1}) const;
 #endif
 
  public: //FIXME private:
@@ -381,8 +383,9 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
   //        dx = -2  -1   0   1   2
   //
   //
-  // Calculate the difference between the x-coordinates of the two kings as the other king minus the king that is to move.
-  // We encode the deltas as 'delta + 2' stored in an unsigned int.
+  //---------------------------------------------------------------------------
+  // Calculate the difference between the coordinates of the two kings as: the other king minus the king that is to move.
+  // We encode these deltas as 'delta + 2' stored in an unsigned int.
   std::array<unsigned int, 2> xy_encoded_delta;
   if constexpr (to_move == black)
     xy_encoded_delta = { static_cast<unsigned int>(wk[x] - bk[x] + 2), static_cast<unsigned int>(wk[y] - bk[y] + 2) };
@@ -399,14 +402,15 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
   //  00000000
   //  00EDCBA0 4
   //  00G000F0 3
-  //  00I000H0 2
+  //  00I0k0H0 2
   //  00K000J0 1
   //  00PONML0 0
   //  00000000
   //         ^ ^
   //         | `-- xy_encoded_delta[y]
   //        lsb
-  //                        ...000EDCBA000G000F000I000H000K000J000PONML
+  //
+  // All the squares around L.
   constexpr uint64_t blocked_by_L = 0b\
 00000000\
 00000000\
@@ -415,75 +419,88 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
 00000111\
 00000101\
 00000111;
-  constexpr uint64_t N = 0b\
-00000000\
-00000000\
-00001000\
-00001000\
-00000000\
-00000000\
-00000000;
-  constexpr uint64_t E = 0b\
-00000000\
-00000000\
-00000000\
-00011000\
-00000000\
-00000000\
-00000000;
-  constexpr uint64_t S = 0b\
+
+  // Calculate the squares that are blocked by the enemy king.
+  uint64_t blocked_squares =
+    (xy_encoded_delta[x] <= 4U && xy_encoded_delta[y] <= 4U)                    // If the enemy king is on A through P,
+        ? blocked_by_L << (xy_encoded_delta[x] + 8 * xy_encoded_delta[y])       // encode the deltas.
+        : 0;                                                                    // Otherwise, if the enemy king is far away, use zero.
+
+  //---------------------------------------------------------------------------
+  // Calculate the bit that corresponds to the square of the white rook.
+  // L corresponds to the square (0, 0) in xy_encoded_delta-coordinates.
+  constexpr uint64_t south_west_of_king = 0b\
 00000000\
 00000000\
 00000000\
-00001000\
-00001000\
 00000000\
-00000000;
-  constexpr uint64_t W = 0b\
-00000000\
-00000000\
-00000000\
-00001100\
-00000000\
-00000000\
-00000000;
-  constexpr uint64_t NE = 0b\
-00000000\
-00000000\
-00010000\
-00001000\
-00000000\
-00000000\
-00000000;
-  constexpr uint64_t NW = 0b\
-00000000\
-00000000\
-00000100\
-00001000\
-00000000\
-00000000\
-00000000;
-  constexpr uint64_t SE = 0b\
-00000000\
-00000000\
-00000000\
-00001000\
-00010000\
-00000000\
-00000000;
-  constexpr uint64_t SW = 0b\
-00000000\
-00000000\
-00000000\
-00001000\
 00000100\
 00000000\
 00000000;
 
-  uint64_t blocked_squares =
-    (xy_encoded_delta[x] <= 4U && xy_encoded_delta[y] <= 4U)                    // If the enemy king on A through P,
-        ? blocked_by_L << (xy_encoded_delta[x] + 8 * xy_encoded_delta[y])       // encode the deltas.
-        : 0;                                                                    // Otherwise, if the enemy king is far away, use zero.
+  // Calculate the difference between the coordinates of the king and the rook as: the rook minus the king that is to move.
+  // We encode these deltas as 'delta + 1' stored in an unsigned int.
+  if constexpr (to_move == black)
+    xy_encoded_delta = { static_cast<unsigned int>(wr[x] - bk[x] + 1), static_cast<unsigned int>(wr[y] - bk[y] + 1) };
+  else
+    xy_encoded_delta = { static_cast<unsigned int>(wr[x] - wk[x] + 1), static_cast<unsigned int>(wr[y] - wk[y] + 1) };
+  // Calculate the square that is the white rook occupies.
+  uint64_t rook_square =
+    (xy_encoded_delta[x] <= 2U && xy_encoded_delta[y] <= 2U)                          // If the rook is next to the king,
+        ? south_west_of_king << (xy_encoded_delta[x] + 8 * xy_encoded_delta[y])       // encode the deltas.
+        : 0;                                                                          // Otherwise, if the rook is far away, use zero.
+
+  //---------------------------------------------------------------------------
+  // Calculate the squares that are blocked by the rook.
+  uint64_t rook_blocked_squares;
+  if constexpr (to_move == black)
+  {
+    constexpr uint64_t west_of_king = 0b\
+00000000\
+00000000\
+00000100\
+00000100\
+00000100\
+00000000\
+00000000;
+    constexpr uint64_t south_of_king = 0b\
+00000000\
+00000000\
+00000000\
+00000000\
+00011100\
+00000000\
+00000000;
+
+    // Calculate the difference between the coordinates of the king and the rook as: the rook minus the (black) king.
+    // We encode these deltas as 'delta + 1' stored in an unsigned int.
+    xy_encoded_delta = { static_cast<unsigned int>(wr[x] - bk[x] + 1), static_cast<unsigned int>(wr[y] - bk[y] + 1) };
+
+    // Calculate the squares that are blocked by the white rook.
+    rook_blocked_squares =
+      (xy_encoded_delta[x] <= 2U &&                                             // If the rook is horizontally near the king,
+       !(wk[x] == wr[x] && utils::is_between_le_lt(bk[y], wk[y], wr[y])))       // and the white king is not blocking the rook,
+          ? west_of_king << xy_encoded_delta[x]                                 // encode the deltas.
+          : 0;                                                                  // Otherwise, if the rook is horizontally far away, use zero.
+    // Calculate the squares that are blocked by the white rook.
+    rook_blocked_squares |=
+      (xy_encoded_delta[y] <= 2U &&                                             // If the rook is vertically near the king,
+       !(wk[y] == wr[y] && utils::is_between_le_lt(bk[x], wk[x], wr[x])))       // and the white king is not blocking the rook,
+          ? south_of_king << (8 * xy_encoded_delta[y])                          // encode the deltas.
+          : 0;                                                                  // Otherwise, if the rook is vertically far away, use zero.
+
+    // The black king can take the white rook.
+    rook_blocked_squares &= ~rook_square;
+  }
+  else
+  {
+    // The white king can't go where the white rook is.
+    rook_blocked_squares = rook_square;
+  }
+
+  //---------------------------------------------------------------------------
+  // Add the squares that are blocked by the rook.
+  blocked_squares |= rook_blocked_squares;
 
   // Prepare the fourth positions where the king steps North, East, South and West.
   std::array<Board, 4> neighbor = {{ {*this}, {*this}, {*this}, {*this} }};
@@ -499,6 +516,34 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
     neighbor[South].dec_king<y, to_move>(),
     neighbor[West].dec_king<x, to_move>()
   };
+
+  // Constants encoding the eight directions the king can step into.
+  // Note that this representation is horizontally flipped.
+  //
+  // msb
+  //  |
+  //  v 43210 <-- xy_encoded_delta[x]
+  //  00000000
+  //  00000000
+  //  00000000 4
+  //  0000N000 3            ---.
+  //  000EkW00 2            ---+-------.
+  //  0000S000 1            ---+-------+-------.
+  //  00000000 0               |       |       |
+  //  00000000                 v       v       v
+  //         ^ ^
+  //         | `-- xy_encoded_delta[y]
+  //        lsb
+  //                    ...         000EkW00        00000000
+  //                        0000N000        0000S000        00000000
+  constexpr uint64_t N  = 0b0000100000000000000000000000000000000000;
+  constexpr uint64_t E  = 0b0000000000010000000000000000000000000000;
+  constexpr uint64_t S  = 0b0000000000000000000010000000000000000000;
+  constexpr uint64_t W  = 0b0000000000000100000000000000000000000000;
+  constexpr uint64_t NE = 0b0001000000000000000000000000000000000000;
+  constexpr uint64_t NW = 0b0000010000000000000000000000000000000000;
+  constexpr uint64_t SE = 0b0000000000000000000100000000000000000000;
+  constexpr uint64_t SW = 0b0000000000000000000001000000000000000000;
 
   // If the step was successful (we didn't step outside the board) and now we're not next to the other king
   // or (if we're black) we put ourself in check, add the result to the output array.

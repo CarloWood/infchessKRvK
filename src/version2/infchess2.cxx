@@ -20,7 +20,6 @@ int main()
   int const block_size_y = Size::block::y;
   Dout(dc::notice, "Block size: " << block_size_x << "x" << block_size_y);
 
-#if 0
   // Construct the initial graph with all positions that are already mate.
   auto start2 = std::chrono::high_resolution_clock::now();
 
@@ -90,153 +89,18 @@ int main()
   auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
   std::cout << "Execution time: " << (duration2.count() / 1000000.0) << " seconds\n";
 
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::wr>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "x coordinate of white rook:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::wr>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "y coordinate of white rook:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::wkbi>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "Block index (x) of the white king:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::wkbi>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "Block index (y) of the white king:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::wkbc>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "x coordinate of white king's block coordinates:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::wkbc>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "y coordinate of white king's block coordinates:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::bkbi>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "Block index (x) of the black king:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::bkbi>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "Block index (y) of the black king:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::x, Board::bkbc>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "x coordinate of black king's block coordinates:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-  {
-    Board::FieldSpec fs = Board::field_spec<coordinates::y, Board::bkbc>();
-    std::bitset<Board::available_bits> mask = fs.mask;
-    std::bitset<Board::available_bits> limit = fs.limit;
-    std::bitset<Board::available_bits> stride = fs.stride;
-    std::cout << "y coordinate of black king's block coordinates:\n";
-    std::cout << "mask  : " << mask << '\n';
-    std::cout << "limit : " << limit << '\n';
-    std::cout << "stride: " << stride << '\n';
-  }
-#endif
-
-#if 1
+#if 0
   // Board::inc_field<0, bkbi>() with this = [{black king:(10, 3), w
-  Board board({14, 20}, {12, 18}, {7, 1});
-  board.utf8art(std::cout, white);
+  Board board({7, 9}, {6, 7}, {6, 14});
+  Color to_move = black;
+  std::cout << "Original position:\n";
+  board.utf8art(std::cout, to_move, false);
   Board::neighbors_type neighbors;
-  int n = board.generate_neighbors(white, Board::children, neighbors);
+  int n = board.generate_neighbors(to_move, Board::children, neighbors);
+  std::cout << "Child positions:\n";
   for (int i = 0; i < n; ++i)
-    neighbors[i].utf8art(std::cout, black);
-
-#elif 0
-  Board board({0, 0}, {7, 10}, {7, 10});
-  do
-  {
-    Board b1(board);
-    Dout(dc::notice, "Copied board --> b1 : " << b1);
-    do
-    {
-      Board b2(b1);
-      Dout(dc::notice, "Copied b1 --> b2 : " << b2);
-      do
-      {
-        Board b3(b2);
-        Dout(dc::notice, "Copied b2 --> b3 : " << b3);
-        b3.utf8art(std::cout, black);
-        while (b3.inc_field<coordinates::x, Board::wkbc>())
-          b3.utf8art(std::cout, black);
-      }
-      while (b2.inc_field<coordinates::x, Board::wkbi>());
-    }
-    while (b1.inc_field<coordinates::y, Board::wkbc>());
-  }
-  while (board.inc_field<coordinates::y, Board::wkbi>());
-#else
-  Board board({14, 20}, {0, 0}, {14, 20});
-  do
-  {
-    Board b1(board);
-    b1.utf8art(std::cout, white);
-    while (b1.dec_field<coordinates::y, Board::wr>())
-      b1.utf8art(std::cout, white);
-  }
-  while (board.dec_field<coordinates::x, Board::wr>());
+    neighbors[i].utf8art(std::cout, to_move.opponent(), false, board.black_king());
 #endif
-
-  return 0;
 
 #if 0
   Board board({4, 5}, {7, 3}, {0, 1});
