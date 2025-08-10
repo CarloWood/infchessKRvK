@@ -2,11 +2,12 @@
 
 #include "Board.h"
 #include "Info.h"
+#include "utils/Vector.h"
 
 class Graph
 {
  public:
-  using info_nodes_type = std::vector<Info>;
+  using info_nodes_type = utils::Vector<Info, InfoIndex>;
   static constexpr size_t info_nodes_size = size_t{1} << Board::encoded_bits;
 
  private:

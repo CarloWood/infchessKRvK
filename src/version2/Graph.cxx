@@ -30,7 +30,7 @@ void Graph::classify()
 
                 if (pos.determine_legal(to_move))
                 {
-                  size_t const index = pos.as_index();
+                  auto const index = pos.as_index();
                   Classification* classification;
                   if (to_move == black)
                   {

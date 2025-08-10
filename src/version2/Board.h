@@ -4,6 +4,7 @@
 #include "Square.h"
 #include "utils/macros.h"
 #include "utils/is_between.h"
+#include "utils/VectorIndex.h"
 #include <cstdint>
 #include <functional>
 #include "debug.h"
@@ -12,6 +13,12 @@
 // This class defines a print_on method.
 using utils::has_print_on::operator<<;
 #endif
+
+// Forward declaration.
+class Board;
+
+// The index used for vectors that store Info objects.
+using InfoIndex = utils::VectorIndex<Board>;
 
 class Board
 {
@@ -78,6 +85,7 @@ class Board
     encoded_((encoded_type{bk.coordinates()} << black_king_shift) |
              (encoded_type{wk.coordinates()} << white_king_shift) |
               encoded_type{wr.coordinates()}) { }
+  Board(InfoIndex info_index) : encoded_(static_cast<encoded_type>(info_index.get_value())) { }
 
   Board& operator=(encoded_type encoded)
   {
@@ -117,7 +125,7 @@ class Board
     return static_cast<WhiteRookSquare::coordinates_type>(encoded_ & white_rook_mask);
   }
 
-  size_t as_index() const { return encoded_; }
+  InfoIndex as_index() const { return InfoIndex{static_cast<size_t>(encoded_)}; }
 
   // Convenience functions to extract the individual coordinates from the compact object returned by black_king.
   static auto x_coord(BlackKingSquare square) { return square.block_index().x_coord() + square.block_square().x_coord(); }
