@@ -7,7 +7,7 @@
 class Graph
 {
  public:
-  using info_nodes_type = utils::Vector<Info, InfoIndex>;
+  using info_nodes_type = Info::info_nodes_type;
   static constexpr size_t info_nodes_size = size_t{1} << Board::encoded_bits;
 
  private:

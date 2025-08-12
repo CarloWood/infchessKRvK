@@ -28,10 +28,7 @@ class Color
     return {color_ == black ? white : black};
   }
 
-  friend std::ostream& operator<<(std::ostream& os, Color color);
+  constexpr operator color_type() const { return color_; }
 
-  friend bool operator==(Color lhs, Color rhs)
-  {
-    return lhs.color_ == rhs.color_;
-  }
+  friend std::ostream& operator<<(std::ostream& os, Color color);
 };

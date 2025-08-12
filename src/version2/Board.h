@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BOARD_H
+#define BOARD_H
 
 #include "Color.h"
 #include "Square.h"
@@ -152,10 +153,12 @@ class Board
     encoded_ |= white_rook.coordinates();
   }
 
-  template<color_type to_move>
-  void generate_king_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors);
-  void generate_rook_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors);
-  int generate_neighbors(Color to_move, Relation relation, neighbors_type& neighbors_out);
+  template<Relation relation, color_type to_move>
+  void generate_king_moves(neighbors_type& neighbors_out, int& neighbors);
+  template<Relation relation>
+  void generate_rook_moves(neighbors_type& neighbors_out, int& neighbors);
+  template<Relation relation, color_type to_move>
+  int generate_neighbors(neighbors_type& neighbors_out);
 
   static void utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Figure (Square)> select_figure);
   void utf8art(std::ostream& os, Color to_move, bool xyz = false, Square marker = Square{-1, -1}) const;
@@ -246,7 +249,7 @@ class Board
   template<int xy, FieldType ft>
   bool inc_field()
   {
-    DoutEntering(dc::notice, "Board::inc_field<" << xy << ", " << ft << ">() with this = [" << *this << "]");
+    //DoutEntering(dc::notice, "Board::inc_field<" << xy << ", " << ft << ">() with this = [" << *this << "]");
 
     constexpr FieldSpec fs = field_spec<xy, ft>();
     // In the case of a block index' x-coordinate, the limit is given as:
@@ -274,18 +277,18 @@ class Board
     }
     if ((encoded_ & fs.mask) + fs.stride > limit)
     {
-      Dout(dc::notice, "Returning false");
+      //Dout(dc::notice, "Returning false");
       return false;
     }
     encoded_ += fs.stride;
-    Dout(dc::notice, "encoded_ = " << *this);
+    //Dout(dc::notice, "encoded_ = " << *this);
     return true;
   }
 
   template<int xy, FieldType ft>
   bool dec_field()
   {
-    DoutEntering(dc::notice, "Board::dec_field<" << xy << ", " << ft << ">() with this = [" << *this << "]");
+    //DoutEntering(dc::notice, "Board::dec_field<" << xy << ", " << ft << ">() with this = [" << *this << "]");
 
     constexpr FieldSpec fs = field_spec<xy, ft>();
     encoded_type limit = 0;
@@ -298,11 +301,11 @@ class Board
     // Test if we can subtract fs.stride from the current block index (encoded_ & fs.mask) without becoming less than limit.
     if ((encoded_ & fs.mask) < limit + fs.stride)
     {
-      Dout(dc::notice, "Returning false");
+      //Dout(dc::notice, "Returning false");
       return false;
     }
     encoded_ -= fs.stride;
-    Dout(dc::notice, "encoded_ = " << *this);
+    //Dout(dc::notice, "encoded_ = " << *this);
     return true;
   }
 
@@ -362,8 +365,20 @@ class Board
   }
 };
 
-template<color_type to_move>
-void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors)
+#include "Square.h"
+#endif // BOARD_H
+
+#ifndef BOARD_defs_H
+#define BOARD_defs_H
+
+// Extract compact square coordinates into separate x and y coordinates for all three pieces.
+inline std::tuple<Square, Square, Square> Board::abbreviations() const
+{
+  return {black_king(), white_king(), white_rook()};
+}
+
+template<Board::Relation relation, color_type to_move>
+void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors)
 {
   using namespace coordinates;
 
@@ -434,6 +449,24 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
         ? blocked_by_L << (xy_encoded_delta[x] + 8 * xy_encoded_delta[y])       // encode the deltas.
         : 0;                                                                    // Otherwise, if the enemy king is far away, use zero.
 
+  // These masks are used to mark squares attacked by the white rook, relative to the king that is moving.
+  constexpr uint64_t west_of_king = 0b\
+00000000\
+00000000\
+00000100\
+00000100\
+00000100\
+00000000\
+00000000;
+  constexpr uint64_t south_of_king = 0b\
+00000000\
+00000000\
+00000000\
+00000000\
+00011100\
+00000000\
+00000000;
+
   //---------------------------------------------------------------------------
   // Calculate the bit that corresponds to the square of the white rook.
   // L corresponds to the square (0, 0) in xy_encoded_delta-coordinates.
@@ -461,25 +494,8 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
   //---------------------------------------------------------------------------
   // Calculate the squares that are blocked by the rook.
   uint64_t rook_blocked_squares;
-  if constexpr (to_move == black)
+  if constexpr (to_move == black && relation == children)
   {
-    constexpr uint64_t west_of_king = 0b\
-00000000\
-00000000\
-00000100\
-00000100\
-00000100\
-00000000\
-00000000;
-    constexpr uint64_t south_of_king = 0b\
-00000000\
-00000000\
-00000000\
-00000000\
-00011100\
-00000000\
-00000000;
-
     // Calculate the difference between the coordinates of the king and the rook as: the rook minus the (black) king.
     // We encode these deltas as 'delta + 1' stored in an unsigned int.
     xy_encoded_delta = { static_cast<unsigned int>(wr[x] - bk[x] + 1), static_cast<unsigned int>(wr[y] - bk[y] + 1) };
@@ -502,8 +518,45 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
   }
   else
   {
-    // The white king can't go where the white rook is.
+    // If relation is children, then white is to move and the white king can't go where the white rook is.
+    // If relation is parents, then irrespective of who is to move, the king can't come from the square where the rook is.
     rook_blocked_squares = rook_square;
+
+    if constexpr (to_move == white && relation == parents)
+    {
+      bool bk_wr_same_file = bk[x] == wr[x];
+      bool bk_wr_same_rank = bk[y] == wr[y];
+
+      // We shouldn't generate parent positions that are illegal: do not return positions where black is in check.
+      //
+      // If the black king and the white rook are not on one line in the child position then we know that the parent
+      // position (which only has the white king on a different square) can not possibly have been check.
+      //
+      // If the black king and the white rook are on the same square then the white rook is no longer on the board
+      // and the white king has no restriction with regard to checks.
+      if (bk_wr_same_file != bk_wr_same_rank)
+      {
+        // Calculate the difference between the coordinates of the king and the rook as: the rook minus the (white) king.
+        // We encode these deltas as 'delta + 1' stored in an unsigned int.
+        xy_encoded_delta = { static_cast<unsigned int>(wr[x] - wk[x] + 1), static_cast<unsigned int>(wr[y] - wk[y] + 1) };
+
+        // Otherwise we must make sure that the white king is inbetween the black king and the white rook, in the parent position.
+        if (bk_wr_same_file)                            // Are the black king and the white rook on the same file?
+        {
+          if (xy_encoded_delta[x] > 2 || !utils::is_between_le_lt(bk[y], wk[y], wr[y]))
+            return;                                     // No parent positions exist that lead to the current position with a king move.
+          uint64_t between = west_of_king << xy_encoded_delta[x];
+          rook_blocked_squares |= ~between;             // Then in the parent position, the white king must be inbetween them.
+        }
+        else // bk_wr_same_rank                         // The black king and the white rook are on the same rank.
+        {
+          if (xy_encoded_delta[y] > 2 || !utils::is_between_le_lt(bk[x], wk[x], wr[x]))
+            return;                                     // No parent positions exist that lead to the current position with a king move.
+          uint64_t between = south_of_king << (8 * xy_encoded_delta[y]);
+          rook_blocked_squares |= ~between;
+        }
+      }
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -557,7 +610,7 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
   // or (if we're black) we put ourself in check, add the result to the output array.
   if (success[North])                   // Did not step off the board?
   {
-    if (!(blocked_squares & N))       // Did not step next to the other king or put ourself in check?
+    if (!(blocked_squares & N))         // Did not step next to the other king or put ourself in check?
       neighbors_out[neighbors++] = neighbor[North];
     // Next step West and East to reach North-West and North-East.
     Board neighbor_north_east(neighbor[North]);
@@ -596,3 +649,82 @@ void Board::generate_king_moves(Relation relation, neighbors_type& neighbors_out
       neighbors_out[neighbors++] = neighbor[West];
   }
 }
+
+template<Board::Relation relation>
+void Board::generate_rook_moves(neighbors_type& neighbors_out, int& neighbors)
+{
+  // FIXME : if relation == parents then do not return positions where black is in check.
+
+  // Get the current x and y coordinates of the white rook and the white king.
+  int wrx = white_rook().x_coord();
+  int wry = white_rook().y_coord();
+  int wkx = white_king().x_coord();
+  int wky = white_king().y_coord();
+
+  // Calculate the distance to the board edge for each direction.
+  std::array<unsigned int, 4> steps = {
+    Size::board::y - 1 - wry,           // The number of squares North of the white rook.
+    Size::board::x - 1 - wrx,           // The number of squares East of the white rook.
+    static_cast<unsigned int>(wry),     // The number of squares South of the white rook.
+    static_cast<unsigned int>(wrx)      // The number of squares West of the white rook.
+  };
+  // Correct these distances for a potential block by the white king.
+  if (wrx == wkx)
+  {
+    // Only one coordinate can be the same.
+    ASSERT(wky != wry);
+    if (wky > wry)      // Is the king North of the rook?
+      steps[North] = wky - wry - 1;
+    else                // The king is South of the rook.
+      steps[South] = wry - wky - 1;
+  }
+  else if (wry == wky)
+  {
+    // Only one coordinate can be the same.
+    ASSERT(wkx != wrx);
+    if (wkx > wrx)      // Is the king East of the rook?
+      steps[East] = wkx - wrx - 1;
+    else                // The king is West of the rook.
+      steps[West] = wrx - wkx - 1;
+  }
+
+  for (int dir = North; dir <= West; ++dir)
+  {
+    Board neighbor(*this);      // Begin with the original position.
+    for (unsigned int step = 0; step < steps[dir]; ++step)
+    {
+      // Move the white rook one step further in the direction dir.
+      switch (dir)
+      {
+        case North:
+          neighbor.inc_field<1, wr>();
+          break;
+        case East:
+          neighbor.inc_field<0, wr>();
+          break;
+        case South:
+          neighbor.dec_field<1, wr>();
+          break;
+        case West:
+          neighbor.dec_field<0, wr>();
+          break;
+      }
+      // Store the current position in the output array.
+      neighbors_out[neighbors++] = neighbor;
+    }
+  }
+}
+
+template<Board::Relation relation, color_type to_move>
+int Board::generate_neighbors(neighbors_type& neighbors_out)
+{
+  // Do not call generate_neighbors after the white rook was already captured.
+  ASSERT(Square{black_king()} != Square{white_rook()});
+  int neighbors = 0;
+  generate_king_moves<relation, to_move>(neighbors_out, neighbors);
+  if (to_move == white)
+    generate_rook_moves<relation>(neighbors_out, neighbors);
+  return neighbors;
+}
+
+#endif // BOARD_defs_H

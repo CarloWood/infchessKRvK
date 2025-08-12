@@ -1,6 +1,5 @@
 #include "sys.h"
 #include "Board.h"
-#include "Square.h"
 #include "Color.h"
 #include "utils/print_using.h"
 #include <utility>
@@ -11,12 +10,6 @@
 #include <algorithm>
 #include "debug.h"
 
-// Extract compact square coordinates into separate x and y coordinates for all three pieces.
-inline std::tuple<Square, Square, Square> Board::abbreviations() const
-{
-  return {black_king(), white_king(), white_rook()};
-}
-
 // Implementation written and tested by Carlo Wood - 2025/07/19.
 //
 // Note: this function assumes it is black to move, therefore it should
@@ -26,7 +19,7 @@ bool Board::black_has_moves() const
 {
   // Set up coordinates for easy swapping.
   auto [x, y, board_size_x, board_size_y] = Square::default_coordinates();
-  auto [bk, wk, wr] = Board::abbreviations();
+  auto [bk, wk, wr] = abbreviations();
 
   // If the black king is to move but isn't mate or stalemate then black can move.
   // It can only be mate or stalemate at the edge of the board.
@@ -146,7 +139,7 @@ bool Board::determine_check() const
 
   // Set up coordinates for easy swapping.
   auto [x, y, board_size_x, board_size_y] = Square::default_coordinates();
-  auto [bk, wk, wr] = Board::abbreviations();
+  auto [bk, wk, wr] = abbreviations();
 
   // Determine if the rook is on the same file and/or row as the black king.
   bool same_file = bk[x] == wr[x];
@@ -180,7 +173,7 @@ bool Board::determine_check() const
 bool Board::determine_legal(Color to_move) const
 {
   using namespace coordinates;
-  auto [bk, wk, wr] = Board::abbreviations();
+  auto [bk, wk, wr] = abbreviations();
 
   // Kings can't be next to eachother, or occupy the same square.
   // Also return false if they occupy the same square.
@@ -227,7 +220,7 @@ bool Board::determine_draw(Color to_move) const
 
   // Set up coordinates for easy swapping.
   auto [x, y, board_size_x, board_size_y] = Square::default_coordinates();
-  auto [bk, wk, wr] = Board::abbreviations();
+  auto [bk, wk, wr] = abbreviations();
 
   if (to_move == white)
     // The position is only draw if the rook was captured.
@@ -272,83 +265,6 @@ bool Board::determine_draw(Color to_move) const
 
   // Hence it is a draw unless the position is position A.
   return !(bk[x] == 0 && wk[x] == 2 && wk[y] == board_size_y - 1 && wr[x] == 0);
-}
-
-void Board::generate_rook_moves(Relation relation, neighbors_type& neighbors_out, int& neighbors)
-{
-  // Get the current x and y coordinates of the white rook and the white king.
-  int wrx = white_rook().x_coord();
-  int wry = white_rook().y_coord();
-  int wkx = white_king().x_coord();
-  int wky = white_king().y_coord();
-
-  // Calculate the distance to the board edge for each direction.
-  std::array<unsigned int, 4> steps = {
-    Size::board::y - 1 - wry,           // The number of squares North of the white rook.
-    Size::board::x - 1 - wrx,           // The number of squares East of the white rook.
-    static_cast<unsigned int>(wry),     // The number of squares South of the white rook.
-    static_cast<unsigned int>(wrx)      // The number of squares West of the white rook.
-  };
-  // Correct these distances for a potential block by the white king.
-  if (wrx == wkx)
-  {
-    // Only one coordinate can be the same.
-    ASSERT(wky != wry);
-    if (wky > wry)      // Is the king North of the rook?
-      steps[North] = wky - wry - 1;
-    else                // The king is South of the rook.
-      steps[South] = wry - wky - 1;
-  }
-  else if (wry == wky)
-  {
-    // Only one coordinate can be the same.
-    ASSERT(wkx != wrx);
-    if (wkx > wrx)      // Is the king East of the rook?
-      steps[East] = wkx - wrx - 1;
-    else                // The king is West of the rook.
-      steps[West] = wrx - wkx - 1;
-  }
-
-  for (int dir = North; dir <= West; ++dir)
-  {
-    Board neighbor(*this);      // Begin with the original position.
-    for (unsigned int step = 0; step < steps[dir]; ++step)
-    {
-      // Move the white rook one step further in the direction dir.
-      switch (dir)
-      {
-        case North:
-          neighbor.inc_field<1, wr>();
-          break;
-        case East:
-          neighbor.inc_field<0, wr>();
-          break;
-        case South:
-          neighbor.dec_field<1, wr>();
-          break;
-        case West:
-          neighbor.dec_field<0, wr>();
-          break;
-      }
-      // Store the current position in the output array.
-      neighbors_out[neighbors++] = neighbor;
-    }
-  }
-}
-
-int Board::generate_neighbors(Color to_move, Relation relation, neighbors_type& neighbors_out)
-{
-  int neighbors = 0;
-
-  if (to_move == black)
-    generate_king_moves<black>(relation, neighbors_out, neighbors);
-  else
-  {
-    generate_king_moves<white>(relation, neighbors_out, neighbors);
-    generate_rook_moves(relation, neighbors_out, neighbors);
-  }
-
-  return neighbors;
 }
 
 #if 0
@@ -599,7 +515,7 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Fig
 
 void Board::utf8art(std::ostream& os, Color to_move, bool xyz, Square marker) const
 {
-  auto [bk, wk, wr] = Board::abbreviations();
+  auto [bk, wk, wr] = abbreviations();
   Board::utf8art(os, to_move, xyz, [bk, wk, wr, marker, this](Square pos){
     if (pos == bk)
       return Figure::black_king;
@@ -679,7 +595,7 @@ void Board::debug_utf8art(libcwd::channel_ct const& debug_channel, Square marker
     Dout(dc::continued, utils::print_using(top_side, &raw_utf8) << (x % 10));
   Dout(dc::finish, "");
   // Print top to bottom.
-  auto [bk, wk, wr] = Board::abbreviations();
+  auto [bk, wk, wr] = abbreviations();
   for (int y = 0; y < Size::board::y; ++y)
   {
     std::ostringstream oss;

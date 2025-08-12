@@ -2,6 +2,8 @@
 
 #include "Board.h"
 #include "utils/has_print_on.h"
+#include "utils/Vector.h"
+#include <limits>
 
 // This class defines a print_on method.
 using utils::has_print_on::operator<<;
@@ -12,13 +14,17 @@ class Info
 {
  public:
   // Storing a ply.
-  static constexpr unsigned int max_ply_estimate = 256;
+  static constexpr unsigned int max_ply_estimate = 255;
   static constexpr int ply_bits = utils::ceil_log2(max_ply_estimate);
   using ply_type = uint_type<ply_bits>;
+  static constexpr ply_type unknown_ply = std::numeric_limits<ply_type>::max();
 
   // Storing the number of children (or parents) of a given node.
   static constexpr int max_degree_bits = utils::ceil_log2(Board::max_degree);
   using degree_type = uint_type<max_degree_bits>;
+
+  // The vector type used to store all Info objects (members of Graph).
+  using info_nodes_type = utils::Vector<Info, InfoIndex>;
 
  private:
   ply_type mate_in_moves_;                      // Mate follows after `mate_in_moves_` ply.
@@ -34,6 +40,9 @@ class Info
   int ply() const { return mate_in_moves_; }
   degree_type number_of_children() const { return number_of_children_; }
   degree_type number_of_visited_children() const { return number_of_visited_children_; }
+
+  // Given that black is to move, set the mate_in_moves_ value on each of the parent positions.
+  void black_to_move_set_maximum_ply_on_parents(info_nodes_type::index_type current, info_nodes_type& infos, std::vector<Board>& parents);
 
  public:
   // Set in how many ply this position is mate.
