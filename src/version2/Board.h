@@ -485,7 +485,7 @@ void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors)
     xy_encoded_delta = { static_cast<unsigned int>(wr[x] - bk[x] + 1), static_cast<unsigned int>(wr[y] - bk[y] + 1) };
   else
     xy_encoded_delta = { static_cast<unsigned int>(wr[x] - wk[x] + 1), static_cast<unsigned int>(wr[y] - wk[y] + 1) };
-  // Calculate the square that is the white rook occupies.
+  // Calculate the square that the white rook occupies.
   uint64_t rook_square =
     (xy_encoded_delta[x] <= 2U && xy_encoded_delta[y] <= 2U)                          // If the rook is next to the king,
         ? south_west_of_king << (xy_encoded_delta[x] + 8 * xy_encoded_delta[y])       // encode the deltas.
@@ -563,7 +563,7 @@ void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors)
   // Add the squares that are blocked by the rook.
   blocked_squares |= rook_blocked_squares;
 
-  // Prepare the fourth positions where the king steps North, East, South and West.
+  // Prepare the four positions where the king steps North, East, South and West.
   std::array<Board, 4> neighbor = {{ {*this}, {*this}, {*this}, {*this} }};
 
   // The block-index and block-coordinates field types of the king that is to move.

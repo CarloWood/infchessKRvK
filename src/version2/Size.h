@@ -54,7 +54,7 @@ static constexpr coordinates_type create_mask()
   mask_type const ones = std::numeric_limits<coordinates_type>::max();
   // The total number of (least significant) bits that are set in `ones`.
   int const total_bits = sizeof(coordinates_type) * CHAR_BIT;
-  static_assert(0 < bits && bits <= total_bits, "The shift is out of range for coordinates_type!");
+  static_assert(0 <= bits && bits <= total_bits, "The shift is out of range for coordinates_type!");
   mask_type const mask = ones >> (total_bits - bits);
   return mask;
 }
@@ -130,8 +130,8 @@ struct Size
  private:
   static constexpr unsigned int Bx = 8;         // Width in squares of one "king block".
   static constexpr unsigned int By = 8;         // Height in square of one "king block".
-  static constexpr unsigned int Px = 2;
-  static constexpr unsigned int Py = 2;
+  static constexpr unsigned int Px = 1;
+  static constexpr unsigned int Py = 1;
 
   static constexpr unsigned int board_size_x = Bx * Px;
   static constexpr unsigned int board_size_y = By * Py;

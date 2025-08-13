@@ -93,14 +93,21 @@ int main()
   // and mark all position that can reach those as mate in 1 ply.
   std::vector<Board> white_to_move_parents2;
   Graph::info_nodes_type& black_to_move = graph2.black_to_move();
+  Graph::info_nodes_type& white_to_move = graph2.white_to_move();
   for (Info::info_nodes_type::index_type info_index : already_mate2)
   {
     Info& black_to_move_info = black_to_move[info_index];
     black_to_move_info.set_mate_in_ply(0);
-    black_to_move_info.black_to_move_set_maximum_ply_on_parents(info_index, black_to_move, white_to_move_parents2);
+    Board{info_index}.debug_utf8art(DEBUGCHANNELS::dc::notice);
+    black_to_move_info.black_to_move_set_maximum_ply_on_parents(info_index, white_to_move, white_to_move_parents2);
   }
 
-#if 1
+  std::cout << "Mate in 1 ply positions:\n";
+  for (Board b : white_to_move_parents2)
+    b.utf8art(std::cout, white);
+
+#if 0   // Board::generate_neighbors testsuite.
+
   constexpr int center_x = Size::board::x / 3;
   constexpr int center_y = Size::board::y / 3;
 
@@ -187,7 +194,11 @@ int main()
         WhiteRookSquare wr(wrx, wry);
         Board board(bk, wk, wr);
         constexpr Color to_move = black;
-        std::cout << "Original position:\n";
+        // Skip all illegal positions.
+        Graph::info_nodes_type& black_to_move = graph2.black_to_move();
+        if (!black_to_move[board.as_index()].classification().is_legal())
+          continue;
+        std::cout << "Original position: " << board << "\n";
         board.utf8art(std::cout, to_move, false);
         // Get the current x,y coordinates of all pieces.
         auto [cbk, cwk, cwr] = board.abbreviations();

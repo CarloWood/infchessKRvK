@@ -34,6 +34,8 @@ class Info
   degree_type number_of_visited_children_;      // The number of children that visited this parent, during generation of the graph.
 
  public:
+  Info() : mate_in_moves_(unknown_ply) { }
+
   // Accessors.
   Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }
@@ -46,9 +48,9 @@ class Info
 
  public:
   // Set in how many ply this position is mate.
-  void set_mate_in_ply(int ply)
+  void set_mate_in_ply(ply_type ply)
   {
-    ASSERT(ply >= 0);
+    ASSERT(ply != unknown_ply);
     // If it is a draw, then it isn't mate in `ply` moves; so why is this function being called?
     ASSERT(!classification_.is_draw());
     // If it mate then `ply` must be zero.
