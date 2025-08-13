@@ -154,11 +154,11 @@ class Board
   }
 
   template<Relation relation, color_type to_move>
-  void generate_king_moves(neighbors_type& neighbors_out, int& neighbors);
+  void generate_king_moves(neighbors_type& neighbors_out, int& neighbors) const;
   template<Relation relation>
-  void generate_rook_moves(neighbors_type& neighbors_out, int& neighbors);
+  void generate_rook_moves(neighbors_type& neighbors_out, int& neighbors) const;
   template<Relation relation, color_type to_move>
-  int generate_neighbors(neighbors_type& neighbors_out);
+  int generate_neighbors(neighbors_type& neighbors_out) const;
 
   static void utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Figure (Square)> select_figure);
   void utf8art(std::ostream& os, Color to_move, bool xyz = false, Square marker = Square{-1, -1}) const;
@@ -378,7 +378,7 @@ inline std::tuple<Square, Square, Square> Board::abbreviations() const
 }
 
 template<Board::Relation relation, color_type to_move>
-void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors)
+void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors) const
 {
   using namespace coordinates;
 
@@ -651,7 +651,7 @@ void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors)
 }
 
 template<Board::Relation relation>
-void Board::generate_rook_moves(neighbors_type& neighbors_out, int& neighbors)
+void Board::generate_rook_moves(neighbors_type& neighbors_out, int& neighbors) const
 {
   // Get the current x and y coordinates of the white rook and the white king.
   int bkx = black_king().x_coord();
@@ -787,7 +787,7 @@ void Board::generate_rook_moves(neighbors_type& neighbors_out, int& neighbors)
 }
 
 template<Board::Relation relation, color_type to_move>
-int Board::generate_neighbors(neighbors_type& neighbors_out)
+int Board::generate_neighbors(neighbors_type& neighbors_out) const
 {
   // Do not call generate_neighbors after the white rook was already captured.
   ASSERT(Square{black_king()} != Square{white_rook()});
