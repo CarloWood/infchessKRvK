@@ -653,13 +653,13 @@ void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors)
 template<Board::Relation relation>
 void Board::generate_rook_moves(neighbors_type& neighbors_out, int& neighbors)
 {
-  // FIXME : if relation == parents then do not return positions where black is in check.
-
   // Get the current x and y coordinates of the white rook and the white king.
-  int wrx = white_rook().x_coord();
-  int wry = white_rook().y_coord();
+  int bkx = black_king().x_coord();
+  int bky = black_king().y_coord();
   int wkx = white_king().x_coord();
   int wky = white_king().y_coord();
+  int wrx = white_rook().x_coord();
+  int wry = white_rook().y_coord();
 
   // Calculate the distance to the board edge for each direction.
   std::array<unsigned int, 4> steps = {
@@ -690,27 +690,98 @@ void Board::generate_rook_moves(neighbors_type& neighbors_out, int& neighbors)
 
   for (int dir = North; dir <= West; ++dir)
   {
-    Board neighbor(*this);      // Begin with the original position.
-    for (unsigned int step = 0; step < steps[dir]; ++step)
+    Board neighbor(*this);                      // Start at the original position.
+    if constexpr (relation == children)
     {
-      // Move the white rook one step further in the direction dir.
+      // Move the white rook steps[dir] in the direction dir.
       switch (dir)
       {
         case North:
-          neighbor.inc_field<1, wr>();
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ += field_spec<1, wr>().stride;
+            neighbors_out[neighbors++] = neighbor;
+          }
           break;
         case East:
-          neighbor.inc_field<0, wr>();
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ += field_spec<0, wr>().stride;
+            neighbors_out[neighbors++] = neighbor;
+          }
           break;
         case South:
-          neighbor.dec_field<1, wr>();
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ -= field_spec<1, wr>().stride;
+            neighbors_out[neighbors++] = neighbor;
+          }
           break;
         case West:
-          neighbor.dec_field<0, wr>();
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ -= field_spec<0, wr>().stride;
+            neighbors_out[neighbors++] = neighbor;
+          }
           break;
       }
-      // Store the current position in the output array.
-      neighbors_out[neighbors++] = neighbor;
+    }
+    else
+    {
+      // The step at which black is in check.
+      int check_step = -1;      // Use a default of -1 for the case that there is no check because the white king will block it.
+      // Move the white rook steps[dir] in the direction dir.
+      switch (dir)
+      {
+        case North:
+          if (wrx == bkx && !(wkx == bkx && utils::is_between_le_lt(bky, wky, wry)))
+            break;
+          if (!(wky == bky && utils::is_between_le_lt(bkx, wkx, wrx)))  // Doesn't the white king block the check?
+            check_step = bky - 1 - wry;
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ += field_spec<1, wr>().stride;
+            if (step != check_step)
+              neighbors_out[neighbors++] = neighbor;
+          }
+          break;
+        case East:
+          if (wry == bky && !(wky == bky && utils::is_between_le_lt(bkx, wkx, wrx)))
+            break;
+          if (!(wkx == bkx && utils::is_between_le_lt(bky, wky, wry)))  // Doesn't the white king block the check?
+            check_step = bkx - 1 - wrx;
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ += field_spec<0, wr>().stride;
+            if (step != check_step)
+              neighbors_out[neighbors++] = neighbor;
+          }
+          break;
+        case South:
+          if (wrx == bkx && !(wkx == bkx && utils::is_between_le_lt(bky, wky, wry)))
+            break;
+          if (!(wky == bky && utils::is_between_le_lt(bkx, wkx, wrx)))  // Doesn't the white king block the check?
+            check_step = wry - bky - 1;
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ -= field_spec<1, wr>().stride;
+            if (step != check_step)
+              neighbors_out[neighbors++] = neighbor;
+          }
+          break;
+        case West:
+          if (wry == bky && !(wky == bky && utils::is_between_le_lt(bkx, wkx, wrx)))
+            break;
+          if (!(wkx == bkx && utils::is_between_le_lt(bky, wky, wry)))  // Doesn't the white king block the check?
+            check_step = wrx - bkx - 1;
+          for (unsigned int step = 0; step < steps[dir]; ++step)
+          {
+            neighbor.encoded_ -= field_spec<0, wr>().stride;
+            if (step != check_step)
+              neighbors_out[neighbors++] = neighbor;
+          }
+          break;
+      }
     }
   }
 }
