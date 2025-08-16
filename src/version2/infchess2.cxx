@@ -89,22 +89,126 @@ int main()
   auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
   std::cout << "Execution time: " << (duration2.count() / 1000000.0) << " seconds\n";
 
+#if 0
+  {
+    Board board({3, 0}, {1, 1}, {1, 0});
+    Color to_move(black);
+
+    board.utf8art(std::cout, to_move);
+
+    Board::neighbors_type parents;
+    int number_of_parents = board.generate_neighbors<Board::parents, white>(parents);
+    ASSERT(number_of_parents == 0);
+
+    return 0;
+  }
+#endif
+
   // Run over all positions that are already mate (as per the classification)
   // and mark all position that can reach those as mate in 1 ply.
   std::vector<Board> white_to_move_parents2;
   Graph::info_nodes_type& black_to_move = graph2.black_to_move();
   Graph::info_nodes_type& white_to_move = graph2.white_to_move();
-  for (Info::info_nodes_type::index_type info_index : already_mate2)
+  for (InfoIndex info_index : already_mate2)
   {
     Info& black_to_move_info = black_to_move[info_index];
-    black_to_move_info.set_mate_in_ply(0);
-    Board{info_index}.debug_utf8art(DEBUGCHANNELS::dc::notice);
+    black_to_move_info.classification().set_mate_in_ply(0);
+    //Board{info_index}.debug_utf8art(DEBUGCHANNELS::dc::notice);
     black_to_move_info.black_to_move_set_maximum_ply_on_parents(info_index, white_to_move, white_to_move_parents2);
   }
 
-  std::cout << "Mate in 1 ply positions:\n";
-  for (Board b : white_to_move_parents2)
-    b.utf8art(std::cout, white);
+  Board initial_position;
+  Color initial_to_move;
+  {
+    // white_to_move_parents are mate in `ply` moves.
+    int ply = 0;
+    while (!white_to_move_parents2.empty())
+    {
+      ++ply;
+      std::vector<Board> black_to_move_parents;
+      // Run over all positions that are mate in an odd number of ply.
+      {
+        for (Board white_to_move_board : white_to_move_parents2)
+        {
+          InfoIndex white_to_move_index = white_to_move_board.as_index();
+          Info& white_to_move_info = white_to_move[white_to_move_index];
+          // All returned parents should be legal.
+          ASSERT(white_to_move_info.classification().is_legal());
+          ASSERT(white_to_move_info.classification().ply() == ply);
+          size_t s = black_to_move_parents.size();
+          white_to_move_info.white_to_move_set_minimum_ply_on_parents(white_to_move_index, black_to_move, black_to_move_parents);
+        }
+      }
+
+      if (!black_to_move_parents.empty())
+      {
+        initial_position = black_to_move_parents[0];
+        initial_to_move = black;
+      }
+      else
+        break;
+
+      ++ply;
+      white_to_move_parents2.clear();
+      // Run over all positions that are mate in an even number of ply.
+      {
+        for (Board black_to_move_board : black_to_move_parents)
+        {
+          InfoIndex black_to_move_index = black_to_move_board.as_index();
+          Info& black_to_move_info = black_to_move[black_to_move_index];
+          // All returned parents should be legal.
+          ASSERT(black_to_move_info.classification().is_legal());
+          ASSERT(black_to_move_info.classification().ply() == ply);
+          size_t s = white_to_move_parents2.size();
+          black_to_move_info.black_to_move_set_maximum_ply_on_parents(black_to_move_index, white_to_move, white_to_move_parents2);
+        }
+      }
+
+      if (!white_to_move_parents2.empty())
+      {
+        initial_position = white_to_move_parents2[0];
+        initial_to_move = white;
+      }
+    }
+    Dout(dc::notice, "max ply = " << ply);
+  }
+
+#if 1
+  std::string filename = std::format("/opt/verylarge/chessgames/infchessKRvK/info{}x{}-{}x{}.txt", Size::Bx, Size::By, Size::Px, Size::Py);
+  std::fstream file;
+#if 0
+  Dout(dc::notice, "Writing " << filename << "...");
+  std::fstream file(filename, std::ios::out | std::ios::binary | std::ios::trunc);
+  graph2.write_to(file);
+  file.close();
+#endif
+
+  Graph g;
+  Graph::info_nodes_type& black_to_move2 = g.black_to_move();
+  Graph::info_nodes_type& white_to_move2 = g.white_to_move();
+  ASSERT(black_to_move2.size() == black_to_move.size());
+  ASSERT(white_to_move2.size() == white_to_move.size());
+
+  Dout(dc::notice, "Reading " << filename << "...");
+  file.open(filename, std::ios::in | std::ios::binary);
+  g.read_from(file);
+  file.close();
+
+  Dout(dc::notice, "Testing contents for black to move...");
+  for (InfoIndex i = black_to_move.ibegin(); i != black_to_move.iend(); ++i)
+  {
+    Info const& info1 = black_to_move[i];
+    Info const& info2 = black_to_move2[i];
+    ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
+  }
+  Dout(dc::notice, "Testing contents for white to move...");
+  for (InfoIndex i = white_to_move.ibegin(); i != white_to_move.iend(); ++i)
+  {
+    Info const& info1 = white_to_move[i];
+    Info const& info2 = white_to_move2[i];
+    ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
+  }
+#endif
 
 #if 0   // Board::generate_neighbors testsuite.
 
@@ -577,14 +681,59 @@ int main()
 #endif
 
 #if 0
-  Board board({4, 5}, {7, 3}, {0, 1});
-  Color to_move(white);
-  int ply = -1;
+  Board board = initial_position;
+  Color to_move = initial_to_move;
   for (;;)
   {
+    Graph::info_nodes_type const& info_nodes = to_move == black ? graph2.black_to_move() : graph2.white_to_move();
+    Info const& info = info_nodes[board.as_index()];
+    int ply = info.classification().ply();
+
     std::cout << "\nCurrent position (" << to_move << " to move; mate in " << ply << " ply):\n";
     board.utf8art(std::cout, to_move);
 
+    if (info.classification().is_mate())
+      break;
+
+    // Get all possible child positions.
+    Board::neighbors_type child_positions;
+    int number_of_children =
+      to_move == black ? board.generate_neighbors<Board::children, black>(child_positions)
+                       : board.generate_neighbors<Board::children, white>(child_positions);
+
+    // Print all optimal moves:
+    Dout(dc::notice|continued_cf, "Possible optimal moves: ");
+    Graph::info_nodes_type const& child_info_nodes = to_move == black ? graph2.white_to_move() : graph2.black_to_move();
+    char const* separator = "";
+    for (int i = 0; i < number_of_children; ++i)
+    {
+      Board b = child_positions[i];
+      Info const& child_info = child_info_nodes[b.as_index()];
+      int child_ply = child_info.classification().ply();
+      if (child_ply == ply - 1)
+      {
+        Dout(dc::continued, separator << board.get_move(b));
+        separator = ", ";
+      }
+    }
+    Dout(dc::finish, ".");
+
+    std::cin.get();
+
+#if 1
+    InfoIndex ii;
+    for (int i = 0; i < number_of_children; ++i)
+    {
+      Board b = child_positions[i];
+      Info const& child_info = child_info_nodes[b.as_index()];
+      int child_ply = child_info.classification().ply();
+      if (child_ply == ply - 1 && (ii.undefined() || b.as_index() > ii))
+      {
+        ii = b.as_index();
+        board = b;
+      }
+    }
+#else
     // Get a move from the user.
     for (;;)
     {
@@ -600,9 +749,23 @@ int main()
       else if (piece == 'K')
         new_board.set_black_king_square({x, y});
 
+      try
+      {
+        auto end = child_positions.cbegin() + number_of_children;
+        auto found = std::find(child_positions.cbegin(), end, new_board);
+        if (found == end)
+          throw std::invalid_argument("Illegal move");
+      }
+      catch (std::exception const& e)
+      {
+        std::cerr << "Error: " << e.what() << std::endl;
+        continue;
+      }
+
       board = new_board;
       break;
     }
+#endif
 
     to_move = to_move.opponent();
   }

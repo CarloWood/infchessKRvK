@@ -67,6 +67,15 @@ class Classification
   bool is_legal() const { return (bits_ & legal); }
   int ply() const { return mate_in_moves_; }
 
+  // Serialization.
+  void write_to(std::ostream& os) const;
+  void read_from(std::istream& os);
+
+  friend bool operator==(Classification const& lhs, Classification const& rhs)
+  {
+    return lhs.mate_in_moves_ == rhs.mate_in_moves_ && lhs.bits_ == rhs.bits_;
+  }
+
 #ifdef CWDEBUG
   void print_on(std::ostream& os) const;
 #endif

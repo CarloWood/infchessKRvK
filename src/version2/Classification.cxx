@@ -2,6 +2,7 @@
 #include "Classification.h"
 #include "Board.h"
 #include "coordinates.h"
+#include "utils/endian.h"
 #include <iostream>
 
 void Classification::determine(Board const& board, Color to_move)
@@ -41,6 +42,33 @@ void Classification::determine(Board const& board, Color to_move)
   set_legal();
 }
 
+void Classification::write_to(std::ostream& os) const
+{
+  auto mate_in_moves_be = utils::hton(mate_in_moves_);
+  char const* char_ptr = reinterpret_cast<char const*>(&mate_in_moves_be);
+  os.write(char_ptr, sizeof(mate_in_moves_be));
+
+  bits_type bits_be = utils::hton(bits_);
+  char_ptr = reinterpret_cast<char const*>(&bits_be);
+  os.write(char_ptr, sizeof(bits_type));
+}
+
+void Classification::read_from(std::istream& is)
+{
+  //FIXME: this is for the old file format.
+  /*Classification::ply_type*/ uint16_t mate_in_moves_be;
+  char* char_ptr = reinterpret_cast<char*>(&mate_in_moves_be);
+  is.read(char_ptr, sizeof(mate_in_moves_be));
+  mate_in_moves_  = utils::ntoh(mate_in_moves_be);
+  if (mate_in_moves_be == 0xffff)
+    mate_in_moves_ = unknown_ply;
+
+  bits_type bits_be;
+  char_ptr = reinterpret_cast<char*>(&bits_be);
+  is.read(char_ptr, sizeof(bits_type));
+  bits_ = utils::ntoh(bits_be);
+}
+
 #ifdef CWDEBUG
 //static
 std::string Classification::state_str(uint8_t state)
@@ -66,6 +94,9 @@ std::string Classification::state_str(uint8_t state)
 
 void Classification::print_on(std::ostream& os) const
 {
-  os << "{bits:" << Classification::state_str(bits_) << '}';
+  os << '{';
+  os << "bits:" << state_str(bits_) <<
+      ", mate_in_moves:" << mate_in_moves_;
+  os << '}';
 }
 #endif

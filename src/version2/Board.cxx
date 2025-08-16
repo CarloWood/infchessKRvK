@@ -530,44 +530,47 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, Square marker) co
   });
 }
 
-#if 0
-std::string Board::get_move(Board const& to_board)
+std::string Board::get_move(Board to_board) const
 {
-  size_t diff = as_index() ^ to_board.as_index();
+  encoded_type diff = static_cast<encoded_type>(as_index().get_value() ^ to_board.as_index().get_value());
 
   int x, y;
   char piece;
 
-  // Check which piece moved by examining the XOR mask
-  if ((diff & Board::black_king_mask))
+  // Check which piece moved by examining the XOR mask.
+  if ((diff & (black_king_mask << black_king_shift)))
   {
-    SquareCompact to_black_king = to_board.black_king();
-    x = Board::x_coord(to_black_king);
-    y = Board::y_coord(to_black_king);
+    BlackKingSquare to_black_king = to_board.black_king();
+    x = to_black_king.x_coord();
+    y = to_black_king.y_coord();
     piece = 'K';
   }
-  else if ((diff & Board::white_king_mask))
+  else if ((diff & (white_king_mask << white_king_shift)))
   {
-    SquareCompact to_white_king = to_board.white_king();
-    x = Board::x_coord(to_white_king);
-    y = Board::y_coord(to_white_king);
+    WhiteKingSquare to_white_king = to_board.white_king();
+    x = to_white_king.x_coord();
+    y = to_white_king.y_coord();
     piece = 'K';
   }
   else
   {
     // There must have been a move.
-    ASSERT((diff & Board::white_rook_mask));
-    SquareCompact to_white_rook = to_board.white_rook();
-    x = Board::x_coord(to_white_rook);
-    y = Board::y_coord(to_white_rook);
+    ASSERT((diff & white_rook_mask));
+    WhiteRookSquare to_white_rook = to_board.white_rook();
+    x = to_white_rook.x_coord();
+    y = to_white_rook.y_coord();
     piece = 'R';
   }
 
   std::ostringstream oss;
+  if (x > 25)
+  {
+    oss << 'a';
+    x -= 26;
+  }
   oss << piece << static_cast<char>('a' + x) << (y + 1);
   return oss.str();
 }
-#endif
 
 #ifdef CWDEBUG
 void Board::debug_utf8art(libcwd::channel_ct const& debug_channel, Square marker) const

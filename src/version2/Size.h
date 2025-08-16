@@ -1,9 +1,11 @@
 #pragma once
 
-#include "Classification.h"
+#include "uint_type.h"
 #include "utils/log2.h"
 #include <limits>
+#include <climits>
 #include <concepts>
+#include "debug.h"
 
 // The board is divided into `Blocks`.
 // The block are numbered.
@@ -127,9 +129,9 @@ concept RectangleSizeConcept = requires(T rectangle_size) {
 
 struct Size
 {
- private:
-  static constexpr unsigned int Bx = 8;         // Width in squares of one "king block".
-  static constexpr unsigned int By = 8;         // Height in square of one "king block".
+ public:
+  static constexpr unsigned int Bx = 27;         // Width in squares of one "king block".
+  static constexpr unsigned int By = 27;         // Height in square of one "king block".
   static constexpr unsigned int Px = 1;
   static constexpr unsigned int Py = 1;
 

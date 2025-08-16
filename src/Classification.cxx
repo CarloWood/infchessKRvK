@@ -2,6 +2,7 @@
 #include "Classification.h"
 #include "Board.h"
 #include "coordinates.h"
+#include "utils/endian.h"
 #include <iostream>
 
 void Classification::determine(Board const& board, Color to_move)
@@ -35,6 +36,34 @@ void Classification::determine(Board const& board, Color to_move)
   }
   // Mark that board as legal.
   set_legal();
+}
+
+void Classification::write_to(std::ostream& os) const
+{
+  using ply_type = uint8_t;
+  ASSERT(mate_in_moves_ == -1 || (0 <= mate_in_moves_ && mate_in_moves_ < 256));
+  ply_type mate_in_moves = mate_in_moves_ & 0xff;
+  auto mate_in_moves_be = utils::hton(mate_in_moves);
+  char const* char_ptr = reinterpret_cast<char const*>(&mate_in_moves_be);
+  os.write(char_ptr, sizeof(mate_in_moves_be));
+  using bits_type = uint8_t;
+  bits_type bits_be = utils::hton(bits_);
+  char_ptr = reinterpret_cast<char const*>(&bits_be);
+  os.write(char_ptr, sizeof(bits_type));
+}
+
+void Classification::read_from(std::istream& is)
+{
+  using ply_type = uint8_t;
+  uint8_t mate_in_moves_be;
+  char* char_ptr = reinterpret_cast<char*>(&mate_in_moves_be);
+  is.read(char_ptr, sizeof(mate_in_moves_be));
+  mate_in_moves_ = mate_in_moves_be == 0xff ? -1 : static_cast<int>(utils::ntoh(mate_in_moves_be));
+  using bits_type = uint8_t;
+  bits_type bits_be;
+  char_ptr = reinterpret_cast<char*>(&bits_be);
+  is.read(char_ptr, sizeof(bits_type));
+  bits_ = utils::ntoh(bits_be);
 }
 
 #ifdef CWDEBUG

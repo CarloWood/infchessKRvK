@@ -21,4 +21,7 @@ class Graph
   info_nodes_type& white_to_move() { return white_to_move_; }
 
   void classify();
+
+  void write_to(std::ostream& os) const;
+  void read_from(std::istream& is);
 };

@@ -192,7 +192,7 @@ int main()
   graph1.generate_edges();
 
   // Run over all positions that are already mate (as per the classification)
-  // and mark all position that can reach those as mate in 1 ply.
+  // and mark all positions that can reach those as mate in 1 ply.
   std::vector<Graph::white_to_move_nodes_type::iterator> white_to_move_parents1;
   for (Graph::black_to_move_nodes_type::iterator iter : already_mate1)
   {
@@ -241,6 +241,40 @@ int main()
   auto end1 = std::chrono::high_resolution_clock::now();
   auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
   std::cout << "Execution time: " << (duration1.count() / 1000000.0) << " seconds\n";
+
+  std::fstream file("info1.out", std::ios::out | std::ios::binary | std::ios::trunc);
+  graph1.write_to(file);
+  file.close();
+
+  // The vectors that were just written to disk.
+  Graph::black_to_move_nodes_type& black_to_move = graph1.black_to_move_map();
+  Graph::white_to_move_nodes_type& white_to_move = graph1.white_to_move_map();
+
+  Graph g;
+
+  file.open("info1.out", std::ios::in | std::ios::binary);
+  g.read_from(file);
+  file.close();
+
+  // The vectors that were just read from disk.
+  Graph::black_to_move_nodes_type& black_to_move2 = g.black_to_move_map();
+  Graph::white_to_move_nodes_type& white_to_move2 = g.white_to_move_map();
+
+  ASSERT(black_to_move2.size() == black_to_move.size());
+  ASSERT(white_to_move2.size() == white_to_move.size());
+
+  for (size_t i = 0; i < black_to_move.size(); ++i)
+  {
+    BlackToMoveData const& info1 = black_to_move[i];
+    BlackToMoveData const& info2 = black_to_move2[i];
+    ASSERT(info1 == info2);
+  }
+  for (size_t i = 0; i < white_to_move.size(); ++i)
+  {
+    WhiteToMoveData const& info1 = white_to_move[i];
+    WhiteToMoveData const& info2 = white_to_move2[i];
+    ASSERT(info1 == info2);
+  }
 
   Graph const& graph = graph1;
 

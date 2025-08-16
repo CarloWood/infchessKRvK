@@ -6,6 +6,8 @@
 
 void Graph::classify()
 {
+  // A dummy array.
+  Board::neighbors_type neighbors;
   // Generate all possible positions.
   for (int bk_x = 0; bk_x < Size::board::x; ++bk_x)
   {
@@ -31,18 +33,18 @@ void Graph::classify()
                 if (pos.determine_legal(to_move))
                 {
                   auto const index = pos.as_index();
-                  Classification* classification;
-                  if (to_move == black)
+                  Info& info = (to_move == black) ? black_to_move_[index] : white_to_move_[index];
+                  Classification& classification = info.classification();
+                  ASSERT(!classification.is_legal());
+                  classification.determine(pos, to_move);
+
+                  if (!classification.is_draw())
                   {
-                    classification = &black_to_move_[index].classification();
-                    ASSERT(!classification->is_legal());
+                    if (to_move == black)
+                      info.set_number_of_children(pos.generate_neighbors<Board::children, black>(neighbors));
+                    else
+                      info.set_number_of_children(pos.generate_neighbors<Board::children, white>(neighbors));
                   }
-                  else
-                  {
-                    classification = &white_to_move_[index].classification();
-                    ASSERT(!classification->is_legal());
-                  }
-                  classification->determine(pos, to_move);
                 }
               }
             }
@@ -51,4 +53,20 @@ void Graph::classify()
       }
     }
   }
+}
+
+void Graph::write_to(std::ostream& os) const
+{
+  for (Info const& info : black_to_move_)
+    info.classification().write_to(os);
+  for (Info const& info : white_to_move_)
+    info.classification().write_to(os);
+}
+
+void Graph::read_from(std::istream& is)
+{
+  for (Info& info : black_to_move_)
+    info.classification().read_from(is);
+  for (Info& info : white_to_move_)
+    info.classification().read_from(is);
 }

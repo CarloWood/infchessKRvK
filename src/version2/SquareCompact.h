@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Size.h"
+#include "debug.h"
 
 template<RectangleSizeConcept RectangleSize>
 class SquareCompact

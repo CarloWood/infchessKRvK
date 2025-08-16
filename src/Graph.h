@@ -98,6 +98,9 @@ class Graph
     ASSERT(i < white_to_move_mate_in_ply_.size());
     return white_to_move_mate_in_ply_[i];
   }
+
+  void write_to(std::ostream& os) const;
+  void read_from(std::istream& is);
 };
 
 template<color_type color>

@@ -163,6 +163,10 @@ class Board
   static void utf8art(std::ostream& os, Color to_move, bool xyz, std::function<Figure (Square)> select_figure);
   void utf8art(std::ostream& os, Color to_move, bool xyz = false, Square marker = Square{-1, -1}) const;
 
+  std::string get_move(Board to_board) const;
+
+  friend bool operator==(Board lhs, Board rhs) { return lhs.encoded_ == rhs.encoded_; }
+
 #ifdef CWDEBUG
   // Allow printing a Board to an ostream.
   void print_on(std::ostream& os) const;
@@ -466,16 +470,28 @@ void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors) c
 00011100\
 00000000\
 00000000;
-
-  //---------------------------------------------------------------------------
-  // Calculate the bit that corresponds to the square of the white rook.
-  // L corresponds to the square (0, 0) in xy_encoded_delta-coordinates.
+  constexpr uint64_t south_east_of_king = 0b\
+00000000\
+00000000\
+00000000\
+00000000\
+00010000\
+00000000\
+00000000;
   constexpr uint64_t south_west_of_king = 0b\
 00000000\
 00000000\
 00000000\
 00000000\
 00000100\
+00000000\
+00000000;
+  constexpr uint64_t north_west_of_king = 0b\
+00000000\
+00000000\
+00000100\
+00000000\
+00000000\
 00000000\
 00000000;
 
@@ -541,19 +557,43 @@ void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors) c
         xy_encoded_delta = { static_cast<unsigned int>(wr[x] - wk[x] + 1), static_cast<unsigned int>(wr[y] - wk[y] + 1) };
 
         // Otherwise we must make sure that the white king is inbetween the black king and the white rook, in the parent position.
-        if (bk_wr_same_file)                            // Are the black king and the white rook on the same file?
+        if (bk_wr_same_rank)                            // Are the black king and the white rook on the same rank?
         {
-          if (xy_encoded_delta[x] > 2 || !utils::is_between_le_lt(bk[y], wk[y], wr[y]))
+          int min_x = std::min(bk[x], wr[x]);
+          int max_x = std::max(bk[x], wr[x]);
+          if (xy_encoded_delta[y] > 2 || min_x > wk[x] || wk[x] > max_x)
             return;                                     // No parent positions exist that lead to the current position with a king move.
-          uint64_t between = west_of_king << xy_encoded_delta[x];
-          rook_blocked_squares |= ~between;             // Then in the parent position, the white king must be inbetween them.
-        }
-        else // bk_wr_same_rank                         // The black king and the white rook are on the same rank.
-        {
-          if (xy_encoded_delta[y] > 2 || !utils::is_between_le_lt(bk[x], wk[x], wr[x]))
-            return;                                     // No parent positions exist that lead to the current position with a king move.
-          uint64_t between = south_of_king << (8 * xy_encoded_delta[y]);
+          uint64_t valid_south_of_king = south_of_king;
+          // At this point there is still the possibility that the white king has the same x-coordinate as the white rook, in
+          // which case not all `south_of_king` bits can be used.
+          if (wk[x] == wr[x])
+          {
+            // For example,
+            // 2 ┃   ♚   ·   ·   ·   ·
+            // 1 ┃ · ♜ · ♔ ·   ·   ·   ·
+            //   ┗━a━b━c━d━e━f━g━h━i━j━k
+            //
+            // In this case a1 is not a square where the white king could have come from
+            // because then black would have been in check with white to move. We still
+            // need to consider c1 however.
+            valid_south_of_king = wr[x] < bk[x] ? south_east_of_king : south_west_of_king;
+          }
+          uint64_t between = valid_south_of_king << (8 * xy_encoded_delta[y]);
           rook_blocked_squares |= ~between;
+        }
+        else // bk_wr_same_file                         // The black king and the white rook are on the same file.
+        {
+          int min_y = std::min(bk[y], wr[y]);
+          int max_y = std::max(bk[y], wr[y]);
+          if (xy_encoded_delta[x] > 2 || min_y > wk[y] || wk[y] > max_y)
+            return;                                     // No parent positions exist that lead to the current position with a king move.
+          uint64_t valid_west_of_king = west_of_king;
+          // At this point there is still the possibility that the white king has the same y-coordinate as the white rook, in
+          // which case not all `west_of_king` bits can be used.
+          if (wk[y] == wr[y])
+            valid_west_of_king = wr[y] < bk[y] ? north_west_of_king : south_west_of_king;
+          uint64_t between = valid_west_of_king << xy_encoded_delta[x];
+          rook_blocked_squares |= ~between;             // Then in the parent position, the white king must be inbetween them.
         }
       }
     }

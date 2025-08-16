@@ -1,5 +1,6 @@
 #include "sys.h"
 #include "BlockIndex.h"
+#include <iostream>
 
 #ifdef CWDEBUG
 void BlockIndex::print_on(std::ostream& os) const
