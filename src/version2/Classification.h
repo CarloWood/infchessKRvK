@@ -20,8 +20,8 @@ class Classification
  public:
   // Storing a ply.
   // The given formula is exact for square boards of NxN where 12 <= N <= 32.
-  static constexpr unsigned int max_ply_upperbound = 2 * ((33 * std::max(Size::board_size_x, Size::board_size_y) - 34) / 7);
-  static constexpr int ply_bits = utils::ceil_log2(max_ply_upperbound);
+  static constexpr unsigned int max_ply_upperbound = 2 * ((33 * std::max(Size::board_size_x, Size::board_size_y) - 34) / 7) + 1;
+  static constexpr int ply_bits = utils::log2(max_ply_upperbound) + 1;
 
   static constexpr int number_of_bits = 5;
   static constexpr int encoded_bits = ply_bits + number_of_bits;

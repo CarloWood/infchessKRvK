@@ -16,7 +16,7 @@ class Info
 {
  public:
   // Storing the number of children (or parents) of a given node.
-  static constexpr int max_degree_bits = utils::ceil_log2(Board::max_degree);
+  static constexpr int max_degree_bits = utils::log2(Board::max_degree) + 1;
   using degree_type = uint_type<max_degree_bits>;
 
   // The vector type used to store all Info objects (members of Graph).
