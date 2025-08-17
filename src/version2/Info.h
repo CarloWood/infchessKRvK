@@ -35,7 +35,7 @@ class Info
   degree_type number_of_children() const { return number_of_children_; }
   degree_type number_of_visited_children() const { return number_of_visited_children_; }
 
-  // Given that black is to move, set the mate_in_moves_ value on each of the parent positions.
+  // Given that black is to move, set the mate_in_ply_ value on each of the parent positions.
   void black_to_move_set_maximum_ply_on_parents(
       info_nodes_type::index_type current, info_nodes_type& parent_infos, std::vector<Board>& parents_out);
   void white_to_move_set_minimum_ply_on_parents(

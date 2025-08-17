@@ -6,9 +6,9 @@
 void Info::black_to_move_set_maximum_ply_on_parents(
     info_nodes_type::index_type current, info_nodes_type& parent_infos, std::vector<Board>& parents_out)
 {
-  // Only call black_to_move_set_maximum_ply_on_parents on a position that already has its `mate_in_moves_` determined.
+  // Only call black_to_move_set_maximum_ply_on_parents on a position that already has its `mate_in_ply_` determined.
   ASSERT(classification().ply() != Classification::unknown_ply);
-  // No parent position can be mate in more than `mate_in_moves_ + 1` ply, because in the parent
+  // No parent position can be mate in more than `mate_in_ply_ + 1` ply, because in the parent
   // position it is white to move and white would pick the move that leads to mate in the least
   // number of moves.
   Classification::ply_type const max_ply = classification().ply() + 1;
@@ -73,9 +73,9 @@ void Info::black_to_move_set_maximum_ply_on_parents(
 void Info::white_to_move_set_minimum_ply_on_parents(
     info_nodes_type::index_type current, info_nodes_type& parent_infos, std::vector<Board>& parents_out)
 {
-  // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_moves_` detemined.
+  // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_ply_` detemined.
   ASSERT(classification().ply() != Classification::unknown_ply);
-  // No parent position can be mate in less than `mate_in_moves_ + 1` ply, because in the parent position
+  // No parent position can be mate in less than `mate_in_ply_ + 1` ply, because in the parent position
   // it is black to move and black would pick the move that leads to mate in the largest number of moves.
   int const min_ply = classification().ply() + 1;
   // Generate all parent positions.
@@ -95,10 +95,10 @@ void Info::white_to_move_set_minimum_ply_on_parents(
       continue;
 
     // Call white_to_move_set_minimum_ply_on_parents exactly once for each position (where white is to move).
-    // In that case, the mate_in_moves_ member is only set after the last child called white_to_move_set_minimum_ply_on_parents.
+    // In that case, the mate_in_ply_ member is only set after the last child called white_to_move_set_minimum_ply_on_parents.
     ASSERT(parent_info.classification().ply() == Classification::unknown_ply);
 
-    // Inform parent that another child has its mate_in_moves_ set.
+    // Inform parent that another child has its mate_in_ply_ set.
     // Append the parent to parents_out if the parent is now known to be mate in `min_ply` moves because this was its last child.
     if (parent_info.increment_processed_children())     // Was this the last child?
     {
