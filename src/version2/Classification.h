@@ -22,25 +22,30 @@ class Classification
   // The given formula is exact for square boards of NxN where 12 <= N <= 32.
   static constexpr unsigned int max_ply_upperbound = 2 * ((33 * std::max(Size::board_size_x, Size::board_size_y) - 34) / 7);
   static constexpr int ply_bits = utils::ceil_log2(max_ply_upperbound);
-  using ply_type = uint_type<ply_bits>;
-  static constexpr ply_type unknown_ply = std::numeric_limits<ply_type>::max();
 
   static constexpr int number_of_bits = 5;
-  using bits_type = uint_type<number_of_bits>;
+  static constexpr int encoded_bits = ply_bits + number_of_bits;
+  using encoded_type = uint_type<encoded_bits>;
 
-  static constexpr bits_type mate = 1;
-  static constexpr bits_type stalemate = 2;
-  static constexpr bits_type draw = 4;
-  static constexpr bits_type check = 8;
-  static constexpr bits_type legal = 16;
-  static constexpr bits_type mask = ~bits_type{0} >> (8 - number_of_bits);
+  static constexpr int mate_in_ply_shift = number_of_bits;
+  static constexpr encoded_type mate_in_ply_mask = create_mask<encoded_type, ply_bits>() << mate_in_ply_shift;
 
- protected:
-  bits_type bits_{};
-  ply_type mate_in_moves_;                      // Mate follows after `mate_in_moves_` ply.
+  using ply_type = uint_type<ply_bits>;
+  static constexpr ply_type unknown_ply = create_mask<encoded_type, ply_bits>();
+
+  static constexpr encoded_type mate = 1;
+  static constexpr encoded_type stalemate = 2;
+  static constexpr encoded_type draw = 4;
+  static constexpr encoded_type check = 8;
+  static constexpr encoded_type legal = 16;
+  static constexpr encoded_type bits_mask = create_mask<encoded_type, number_of_bits>();
+
+ private:
+  encoded_type encoded_;                        // <mate_in_moves><bits>
 
  public:
-  Classification() : bits_{0}, mate_in_moves_(unknown_ply) { }
+  // Initialize <mate_in_ply> with unknown_ply.
+  Classification() : encoded_{static_cast<encoded_type>(unknown_ply) << mate_in_ply_shift} { }
 
   void determine(Board const& board, Color to_move);
 
@@ -48,45 +53,41 @@ class Classification
   // Clear all classification bits.
   void reset()
   {
-    bits_ = 0;
+    encoded_ &= ~bits_mask;
   }
   // Set the check bit.
-  void set_check() { bits_ |= check; }
+  void set_check() { encoded_ |= check; }
   // Set the draw bit.
-  void set_draw() { bits_ |= draw; }
+  void set_draw() { encoded_ |= draw; }
   // Set the mate bit.
-  void set_mate() { bits_ |= mate; }
+  void set_mate() { encoded_ |= mate; }
   // Set the stalemate bit.
-  void set_stalemate() { bits_ |= stalemate; }
+  void set_stalemate() { encoded_ |= stalemate; }
   // Set the legal bit to mark the other bits as valid.
   // Only invalid positions remain having this bit unset.
-  void set_legal() { bits_ |= legal; }
+  void set_legal() { encoded_ |= legal; }
 
  public:
   // Set in how many ply this position is mate.
-  void set_mate_in_ply(ply_type ply COMMA_DEBUG_ONLY(bool force = false))
+  void set_mate_in_ply(ply_type ply)
   {
-#ifdef CWDEBUG
-    if (!force)
-    {
-      ASSERT(ply != unknown_ply);
-      // If it is a draw, then it isn't mate in `ply` moves; so why is this function being called?
-      ASSERT(!is_draw());
-      // If it mate then `ply` must be zero.
-      ASSERT(is_mate() == (ply == 0));
-    }
-#endif
-    mate_in_moves_ = ply;
+    // Only call this function with an argument that makes sense.
+    ASSERT(ply < unknown_ply);
+    // If it is a draw, then it isn't mate in `ply` moves; so why is this function being called?
+    ASSERT(!is_draw());
+    // If it mate then `ply` must be zero.
+    ASSERT(is_mate() == (ply == 0));
+    encoded_ &= ~mate_in_ply_mask;
+    encoded_ |= static_cast<encoded_type>(ply) << mate_in_ply_shift;
   }
 
   // Accessors.
-  bool has_classification(bits_type classification_mask) const { return (classification_mask & bits_) == classification_mask; }
-  bool is_mate() const { return (bits_ & mate); }
-  bool is_stalemate() const { return (bits_ & stalemate); }
-  bool is_draw() const { return (bits_ & draw); }
-  bool is_check() const { return (bits_ & check); }
-  bool is_legal() const { return (bits_ & legal); }
-  int ply() const { return mate_in_moves_; }
+  bool is_mate() const { return (encoded_ & mate); }
+  bool is_stalemate() const { return (encoded_ & stalemate); }
+  bool is_draw() const { return (encoded_ & draw); }
+  bool is_check() const { return (encoded_ & check); }
+  bool is_legal() const { return (encoded_ & legal); }
+  int ply() const { return encoded_ >> mate_in_ply_shift; }
 
   // Serialization.
   void write_to(std::ostream& os) const;
@@ -94,11 +95,11 @@ class Classification
 
   friend bool operator==(Classification lhs, Classification rhs)
   {
-    return lhs.bits_ == rhs.bits_;
+    return lhs.encoded_ == rhs.encoded_;
   }
 
 #ifdef CWDEBUG
-  static std::string state_str(bits_type state);
+  static std::string state_str(encoded_type state);
   void print_on(std::ostream& os) const;
 #endif
 };
