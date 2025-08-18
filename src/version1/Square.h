@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Board.h"
-#include "coordinates.h"
+#include "../coordinates.h"
 #include <iosfwd>
 #include <utility>
 #include <array>

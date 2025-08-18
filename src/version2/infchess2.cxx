@@ -1,6 +1,6 @@
 #include "sys.h"
 #include "Graph.h"
-#include "parse_move.h"
+#include "../parse_move.h"
 #include <bitset>
 #include "debug.h"
 

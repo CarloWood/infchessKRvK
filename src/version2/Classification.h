@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Color.h"
 #include "Size.h"
 #include "uint_type.h"
+#include "../Color.h"
 #include "utils/has_print_on.h"
 #include <cstdint>
 #include <string>

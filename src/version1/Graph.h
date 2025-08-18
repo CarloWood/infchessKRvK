@@ -3,7 +3,7 @@
 #include "Board.h"
 #include "BlackToMoveData.h"
 #include "WhiteToMoveData.h"
-#include "Color.h"
+#include "../Color.h"
 #include "debug.h"
 
 class Graph
@@ -111,7 +111,7 @@ void Graph::generate_edges_with_color()
   // The map containing all positions with `color` to move.
   auto& color_to_move_map = map_with_to_move<color>();
   // The map containing all positions with the other color to move.
-  auto& other_to_move_map = map_with_to_move<to_move.opponent().color_>();
+  auto& other_to_move_map = map_with_to_move<to_move.opponent()>();
   //Dout(dc::notice, "Number of positions in color_to_move_map: " << color_to_move_map.size());
   //Dout(dc::notice, "Number of positions in other_to_move_map: " << other_to_move_map.size());
 

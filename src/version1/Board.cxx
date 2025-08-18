@@ -1,7 +1,7 @@
 #include "sys.h"
 #include "Board.h"
 #include "Square.h"
-#include "Color.h"
+#include "../Color.h"
 #include "utils/print_using.h"
 #include <utility>
 #include <cmath>

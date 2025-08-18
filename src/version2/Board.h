@@ -1,8 +1,8 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#include "Color.h"
 #include "Square.h"
+#include "../Color.h"
 #include "utils/macros.h"
 #include "utils/is_between.h"
 #include "utils/VectorIndex.h"

@@ -1,7 +1,7 @@
 #include "sys.h"
 #include "Classification.h"
 #include "Board.h"
-#include "coordinates.h"
+#include "../coordinates.h"
 #include "utils/endian.h"
 #include <iostream>
 

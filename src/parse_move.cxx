@@ -35,7 +35,6 @@ std::tuple<char, int, int> parseChessMove()
   // Convert x-coordinate to integer (Excel-like column system).
   int xCoord = 0;
   for (char c : xCoordStr) { xCoord = xCoord * 26 + (c - 'a' + 1); }
-  xCoord -= 1;  // Adjust to 0-based indexing.
 
   // Extract and convert y-coordinate.
   std::string yCoordStr = line.substr(yStart);
@@ -51,8 +50,8 @@ std::tuple<char, int, int> parseChessMove()
 
   if (yCoord <= 0) { throw std::invalid_argument("Y-coordinate must be positive"); }
 
-  // Return 0-based y-coordinate.
-  return std::make_tuple(piece, xCoord, yCoord - 1);
+  // Return 0-based x- and y-coordinates.
+  return std::make_tuple(piece, xCoord - 1, yCoord - 1);
 }
 
 std::tuple<char, int, int> parse_move(Color color, int board_size_x, int board_size_y)

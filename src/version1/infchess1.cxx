@@ -1,8 +1,8 @@
 #include "sys.h"
 #include "Graph.h"
 #include "Box.h"
-#include "parse_move.h"
-#include "print_formula_table.h"
+#include "../parse_move.h"
+#include "../print_formula_table.h"
 #include <vector>
 #include <iostream>
 #include <cassert>
@@ -303,7 +303,7 @@ int main()
         for (int n = 0; n < board_size_x - offset; ++n)
         {
           Board b = get_relative_position(relative_position_index, n, m);
-          ply_values.push_back(graph.map_with_to_move<to_move.color_>()[b.as_index()].ply());
+          ply_values.push_back(graph.map_with_to_move<to_move>()[b.as_index()].ply());
         }
         auto [final_k, stable_n] = print_formula_table(m, ply_values);
         black_to_move_final_k_values[m].push_back(final_k);
@@ -319,7 +319,7 @@ int main()
         for (int n = 0; n < board_size_x - offset; ++n)
         {
           Board b = get_relative_position(relative_position_index, n, m);
-          ply_values.push_back(graph.map_with_to_move<to_move.color_>()[b.as_index()].ply());
+          ply_values.push_back(graph.map_with_to_move<to_move>()[b.as_index()].ply());
         }
         auto [final_k, stable_n] = print_formula_table(m, ply_values);
         white_to_move_final_k_values[m].push_back(final_k);

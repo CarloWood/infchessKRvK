@@ -8,10 +8,12 @@ enum color_type
   white
 };
 
-struct Color
+class Color
 {
+ private:
   color_type color_;
 
+ public:
   constexpr Color() : color_{black} { }
   constexpr Color(color_type color) : color_(color) { }
 
@@ -25,11 +27,8 @@ struct Color
   {
     return {color_ == black ? white : black};
   }
+
+  constexpr operator color_type() const { return color_; }
+
+  friend std::ostream& operator<<(std::ostream& os, Color color);
 };
-
-std::ostream& operator<<(std::ostream& os, Color color);
-
-inline bool operator==(Color lhs, Color rhs)
-{
-  return lhs.color_ == rhs.color_;
-}

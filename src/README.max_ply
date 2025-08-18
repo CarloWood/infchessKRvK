@@ -1,0 +1,191 @@
+NOTICE        : Board size: 9x9
+Total legal positions: 851872
+Draw positions: 107138
+Black in check positions: 91952
+Mate positions: 126
+Stalemate positions: 19
+NOTICE        : max ply = 73
+
+NOTICE        : Board size: 10x10
+Total legal positions: 1654464
+Draw positions: 184835
+Black in check positions: 161088
+Mate positions: 160
+Stalemate positions: 21
+NOTICE        : max ply = 82
+
+NOTICE        : Board size: 11x11
+Total legal positions: 3003180
+Draw positions: 301782
+Black in check positions: 266340
+Mate positions: 198
+Stalemate positions: 23
+NOTICE        : max ply = 92
+
+NOTICE        : Board size: 12x12
+Total legal positions: 5160100
+Draw positions: 471143
+Black in check positions: 420200
+Mate positions: 240
+Stalemate positions: 25
+NOTICE        : max ply = 102
+
+NOTICE        : Board size: 13x13
+Total legal positions: 8471584
+Draw positions: 708722
+Black in check positions: 637736
+Mate positions: 286
+Stalemate positions: 27
+NOTICE        : max ply = 112
+
+NOTICE        : Board size: 14x14
+Total legal positions: 13384592
+Draw positions: 1033203
+Black in check positions: 936832
+Mate positions: 336
+Stalemate positions: 29
+NOTICE        : max ply = 122
+
+NOTICE        : Board size: 15x15
+Total legal positions: 20464444
+Draw positions: 1466390
+Black in check positions: 1338428
+Mate positions: 390
+Stalemate positions: 31
+NOTICE        : max ply = 130
+
+NOTICE        : Board size: 16x16
+Total legal positions: 30414020
+Draw positions: 2033447
+Black in check positions: 1866760
+Mate positions: 448
+Stalemate positions: 33
+NOTICE        : max ply = 140
+
+NOTICE        : Board size: 17x17
+Total legal positions: 44094400
+Draw positions: 2763138
+Black in check positions: 2549600
+Mate positions: 510
+Stalemate positions: 35
+NOTICE        : max ply = 150
+
+NOTICE        : Board size: 18x18
+Total legal positions: 62546944
+Draw positions: 3688067
+Black in check positions: 3418496
+Mate positions: 576
+Stalemate positions: 37
+NOTICE        : max ply = 160
+
+NOTICE        : Board size: 19x19
+Total legal positions: 87016812
+Draw positions: 4844918
+Black in check positions: 4509012
+Mate positions: 646
+Stalemate positions: 39
+NOTICE        : max ply = 168
+
+NOTICE        : Board size: 20x20
+Total legal positions: 118977924
+Draw positions: 6274695
+Black in check positions: 5860968
+Mate positions: 720
+Stalemate positions: 41
+NOTICE        : max ply = 178
+
+NOTICE        : Board size: 21x21
+Total legal positions: 160159360
+Draw positions: 8022962
+Black in check positions: 7518680
+Mate positions: 798
+Stalemate positions: 43
+NOTICE        : max ply = 188
+
+NOTICE        : Board size: 22x22
+Total legal positions: 212573200
+Draw positions: 10140083
+Black in check positions: 9531200
+Mate positions: 880
+Stalemate positions: 45
+NOTICE        : max ply = 196
+
+NOTICE        : Board size: 23x23
+Total legal positions: 278543804
+Draw positions: 12681462
+Black in check positions: 11952556
+Mate positions: 966
+Stalemate positions: 47
+NOTICE        : max ply = 206
+
+NOTICE        : Board size: 24x24
+Total legal positions: 360738532
+Draw positions: 15707783
+Black in check positions: 14841992
+Mate positions: 1056
+Stalemate positions: 49
+NOTICE        : max ply = 216
+
+NOTICE        : Board size: 25x25
+Total legal positions: 462199904
+Draw positions: 19285250
+Black in check positions: 18264208
+Mate positions: 1150
+Stalemate positions: 51
+NOTICE        : max ply = 226
+
+NOTICE        : Board size: 26x26
+Total legal positions: 586379200
+Draw positions: 23485827
+Black in check positions: 22289600
+Mate positions: 1248
+Stalemate positions: 53
+NOTICE        : max ply = 234
+
+NOTICE        : Board size: 27x27
+Total legal positions: 737171500
+Draw positions: 28387478
+Black in check positions: 26994500
+Mate positions: 1350
+Stalemate positions: 55
+NOTICE        : max ply = 244
+
+NOTICE        : Board size: 28x28
+Total legal positions: 918952164
+Draw positions: 34074407
+Black in check positions: 32461416
+Mate positions: 1456
+Stalemate positions: 57
+NOTICE        : max ply = 254
+
+NOTICE        : Board size: 29x29
+Total legal positions: 1136614752
+Draw positions: 40637298
+Black in check positions: 38779272
+Mate positions: 1566
+Stalemate positions: 59
+NOTICE        : max ply = 262
+
+NOTICE        : Board size: 30x30
+Total legal positions: 1395610384
+Draw positions: 48173555
+Black in check positions: 46043648
+Mate positions: 1680
+Stalemate positions: 61
+NOTICE        : max ply = 272
+
+NOTICE        : Board size: 31x31
+Total legal positions: 1701988540
+Draw positions: 56787542
+Black in check positions: 54357020
+Mate positions: 1798
+Stalemate positions: 63
+NOTICE        : max ply = 282
+
+NOTICE        : Board size: 32x32
+Total legal positions: 2062439300
+Draw positions: 66590823
+Black in check positions: 63829000
+Mate positions: 1920
+Stalemate positions: 65
+NOTICE        : max ply = 292

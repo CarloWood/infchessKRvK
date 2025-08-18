@@ -1,9 +1,9 @@
 #pragma once
 
-#include "coordinates.h"
 #include "BlackKingSquare.h"
 #include "WhiteKingSquare.h"
 #include "WhiteRookSquare.h"
+#include "../coordinates.h"
 #include <iosfwd>
 #include <utility>
 #include <array>

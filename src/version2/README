@@ -1,0 +1,63 @@
+I think it is time for a rewrite from scratch, this time concentrating on efficient memory use, and using 32 threads to speed things up. Bring out the big guns.
+
+I'm going all in now... lets store boards as compact as possible, that is, only certain positions are stored (about half of them). If a flipped board is needed, then that board is first flipped, then looked up, and the results are converted back again.
+
+Also, I can partitions the king coordinates in smaller squares, so that for a given position all children and parents are typically in memory, but we don't need ALL positions to be in memory all the time.
+
+Lets say the board is WxH big, then we need ceil_log2(WxH) bits for the rook.
+Say I only want to use 8 GB of ram for a local view (so that I can a few of those in memory at the same time, if needed). We need to store, per position, the number of ply, the classification (both of which fit in 2 bytes together) and the number of child positions as well as a count of those, again 2 bytes(?). That's 4 bytes per position. Assume one partition is 8 GB = 2^33 bytes, then can store 2^33 / 4 = 2^31 times information per position.  For example with W=H=64, one position is 36 bits, I need a factor of 64x64 = 4096 = 2^12 for the rook coordinates, that leaves 2^(31-12) = 2^19 for the kings. Ok, lets give each king a partition of 32x32 - that is 10 bits. 10 + 10 + 12 = 32 bits for the whole partition and 2^32 * 4 bytes = 16 GB. However, if a king is on a corner of its partition, we need four partitions to be loaded... so, a king partition should be like 16x16.
+
+Partitions can be stored on disk, using mapping; we should be able to seamlessly make that work where the OS does the disk management of swapping partitions in and out.
+
+Note that one `Partition` refers to set of positions where either white or black is to move, where the white king in a given `Block` and the
+black king is in a given (possibly the same) `Block`. The whole board is made up of `Bx` times `By` `Blocks`.
+
+Each `Board` must describe the coordinates of all pieces, where each king square is encoded into a `BlockIndex`, and a `BlockSquare,
+as well as all child and parent positions (including illegal ones). Any access to the `Info` object of that position goes through the
+current `Partition` object.
+
+As it is not clear if an `Info` object fit efficiently in a power of 2 bytes, lets group them together per all white rook coordinates.
+
+
+The board is divided into `Blocks`.
+The block are numbered (BlockIndex).
+
+    .--------------+---------------+---------------.
+    |              |               |               | ^
+    |      9       |      10       |      11       | |
+    |              |               |               | |
+    |              |               |               | |
+    +--------------+---------------+---------------+ |
+    |              |               |               | |
+    |      6       |       7       |       8       | |
+    |              |               |               | |
+    |              |               |               | | board_size_y
+    +--------------+---------------+---------------+ |/
+    |              |               |               | |
+    |      3       |       4       |       5       | |
+    |              |               |               | |
+    |              |               |               | |
+    +--------------+---------------+---------------+ |
+  ^ |              |               |               | |
+ By |      0       |       1       |       2       | |
+  | |              |               |               | |
+  v |              |               |               | v
+    +--------------+---------------+---------------+
+     <-----Bx----->
+     <----------------board_size_x---------------->
+
+We have a (white) `RookSquare`, wrapping the coordinates of the rook.
+It is derived from BoardSquareCompact and takes 2 bytes.
+
+A `Board` however, exists of all coordinates of all three pieces,
+where the two kings are stored by their block number plus
+their place inside that block. Therefore, both `BlackKingSquare`
+and `WhiteKingSquare` are derived from `KingSquare` which in turn
+stores a `BlockIndex` and a `BlockSquareCompact`.
+
+Both, `BoardSquareCompact` and `BlockSquareCompact` are derived
+from `SquareCompact`, which stores the two coordinates in a compact
+way.
+
+All the (bit) sizes of the board and paritions is stored as
+constexpr in a struct `Size`.

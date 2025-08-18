@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Color.h"
+#include "../Color.h"
 #include "utils/has_print_on.h"
 #include "utils/log2.h"
 #include <cstdint>
