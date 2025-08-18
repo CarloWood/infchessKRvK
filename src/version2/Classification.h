@@ -20,8 +20,15 @@ class Classification
  public:
   // Storing a ply.
   // The given formula is exact for square boards of NxN where 12 <= N <= 32.
-  static constexpr unsigned int max_ply_upperbound = 2 * ((33 * std::max(Size::board_size_x, Size::board_size_y) - 34) / 7) + 1;
-  static constexpr int ply_bits = utils::log2(max_ply_upperbound) + 1;
+  static constexpr unsigned int max_ply_upperbound = 2 * ((33 * std::max(Size::board_size_x, Size::board_size_y) - 34) / 7);
+  // We need to add two extra because
+  //    I) unknown_ply may not used, and
+  //    II) set_maximum_ply_on_parents tests against the last found ply (that can have
+  //    the maximum value returned by this formula) PLUS one and that still needs to be less than unknown_ply.
+  // For example, for board_size = 28 the maximum possible number of ply that a position is mate is 254,
+  // which means we need to be able to have 255 (one more) available as less than unknown_ply: unknown_ply >= 256 -->
+  // unknown_ply = 511 and we need 9 bits.
+  static constexpr int ply_bits = utils::log2(max_ply_upperbound + 2) + 1;
 
   static constexpr int number_of_bits = 5;
   static constexpr int encoded_bits = ply_bits + number_of_bits;

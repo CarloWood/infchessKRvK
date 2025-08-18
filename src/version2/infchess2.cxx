@@ -20,6 +20,10 @@ int main()
   int const block_size_y = Size::block::y;
   Dout(dc::notice, "Block size: " << block_size_x << "x" << block_size_y);
 
+  Dout(dc::notice, "Classification::unknown_ply = " << static_cast<uint32_t>(Classification::unknown_ply));
+  Dout(dc::notice, "Classification::max_ply_upperbound = " << static_cast<uint32_t>(Classification::max_ply_upperbound));
+  Dout(dc::notice, "Classification::ply_bits = " << static_cast<uint32_t>(Classification::ply_bits));
+
   // Construct the initial graph with all positions that are already mate.
   auto start2 = std::chrono::high_resolution_clock::now();
 
@@ -173,15 +177,13 @@ int main()
     Dout(dc::notice, "max ply = " << ply);
   }
 
-#if 1
   std::string filename = std::format("/opt/verylarge/chessgames/infchessKRvK/info{}x{}-{}x{}.txt", Size::Bx, Size::By, Size::Px, Size::Py);
-  std::fstream file;
-#if 0
   Dout(dc::notice, "Writing " << filename << "...");
   std::fstream file(filename, std::ios::out | std::ios::binary | std::ios::trunc);
+  if (!file)
+    DoutFatal(dc::core, "Failed to open " << filename << " for writing!");
   graph2.write_to(file);
   file.close();
-#endif
 
   Graph g;
   Graph::info_nodes_type& black_to_move2 = g.black_to_move();
@@ -191,6 +193,8 @@ int main()
 
   Dout(dc::notice, "Reading " << filename << "...");
   file.open(filename, std::ios::in | std::ios::binary);
+  if (!file)
+    DoutFatal(dc::core, "Failed to open " << filename << " for reading!");
   g.read_from(file);
   file.close();
 
@@ -208,7 +212,6 @@ int main()
     Info const& info2 = white_to_move2[i];
     ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
   }
-#endif
 
 #if 0   // Board::generate_neighbors testsuite.
 

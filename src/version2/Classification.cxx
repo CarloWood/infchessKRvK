@@ -51,20 +51,10 @@ void Classification::write_to(std::ostream& os) const
 
 void Classification::read_from(std::istream& is)
 {
-  //FIXME: this is for the old file format.
-  /*Classification::ply_type*/ uint16_t mate_in_ply_be;
-  char* char_ptr = reinterpret_cast<char*>(&mate_in_ply_be);
-  is.read(char_ptr, sizeof(mate_in_ply_be));
-  encoded_type mate_in_ply  = utils::ntoh(mate_in_ply_be);
-  if (mate_in_ply_be == 0xffff)
-    mate_in_ply = unknown_ply;
-
-  uint8_t bits_be;
-  char_ptr = reinterpret_cast<char*>(&bits_be);
-  is.read(char_ptr, sizeof(bits_be));
-  encoded_type bits = utils::ntoh(bits_be);
-
-  encoded_ = (mate_in_ply << mate_in_ply_shift) | bits;
+  encoded_type encoded_be;
+  char* char_ptr = reinterpret_cast<char*>(&encoded_be);
+  is.read(char_ptr, sizeof(encoded_be));
+  encoded_ = utils::ntoh(encoded_be);
 }
 
 #ifdef CWDEBUG
