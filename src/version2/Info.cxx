@@ -4,7 +4,7 @@
 #include "debug.h"
 
 void Info::black_to_move_set_maximum_ply_on_parents(
-    info_nodes_type::index_type current, info_nodes_type& parent_infos, std::vector<Board>& parents_out)
+    nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out)
 {
   // Only call black_to_move_set_maximum_ply_on_parents on a position that already has its `mate_in_ply_` determined.
   ASSERT(classification().ply() != Classification::unknown_ply);
@@ -71,7 +71,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(
 }
 
 void Info::white_to_move_set_minimum_ply_on_parents(
-    info_nodes_type::index_type current, info_nodes_type& parent_infos, std::vector<Board>& parents_out)
+    nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out)
 {
   // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_ply_` detemined.
   ASSERT(classification().ply() != Classification::unknown_ply);

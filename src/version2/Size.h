@@ -130,8 +130,8 @@ concept RectangleSizeConcept = requires(T rectangle_size) {
 struct Size
 {
  public:
-  static constexpr unsigned int Bx = 22;         // Width in squares of one "king block".
-  static constexpr unsigned int By = 22;         // Height in square of one "king block".
+  static constexpr unsigned int Bx = 21;         // Width in squares of one "king block".
+  static constexpr unsigned int By = 21;         // Height in square of one "king block".
   static constexpr unsigned int Px = 1;
   static constexpr unsigned int Py = 1;
 

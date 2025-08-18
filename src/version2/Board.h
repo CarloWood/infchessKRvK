@@ -367,6 +367,13 @@ class Board
     reset_high_field<xy, kbc>();
     return true;
   }
+
+  template<color_type color>
+  BlockIndex block_index() const
+  {
+    constexpr int index_shift = color == black ? black_king_shift : white_king_shift;
+    return (encoded_ >> index_shift) & BlockIndex::mask;
+  }
 };
 
 #include "Square.h"

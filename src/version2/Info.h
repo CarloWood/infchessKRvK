@@ -20,7 +20,7 @@ class Info
   using degree_type = uint_type<max_degree_bits>;
 
   // The vector type used to store all Info objects (members of Graph).
-  using info_nodes_type = utils::Vector<Info, InfoIndex>;
+  using nodes_type = utils::Vector<Info, InfoIndex>;
 
  private:
   Classification classification_;               // The classification of this position.
@@ -37,9 +37,9 @@ class Info
 
   // Given that black is to move, set the mate_in_ply_ value on each of the parent positions.
   void black_to_move_set_maximum_ply_on_parents(
-      info_nodes_type::index_type current, info_nodes_type& parent_infos, std::vector<Board>& parents_out);
+      nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out);
   void white_to_move_set_minimum_ply_on_parents(
-      info_nodes_type::index_type current, info_nodes_type& parent_infos, std::vector<Board>& parents_out);
+      nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out);
 
   void set_number_of_children(degree_type number_of_children)
   {
