@@ -18,7 +18,7 @@ class KingSquare
   static constexpr coordinates_type block_index_mask = create_mask<coordinates_type, BlockIndex::number_of_blocks_bits>();
 
   static constexpr BlockIndex xy_to_block_index(int x, int y) { return {x, y}; };
-  static constexpr BlockSquareCompact xy_to_block_square(int x, int y)
+  static BlockSquareCompact xy_to_block_square(int x, int y)
   {
     return {
       static_cast<int>(static_cast<unsigned int>(x) % Size::block::x),
@@ -26,7 +26,7 @@ class KingSquare
     };
   }
 
-  static constexpr coordinates_type block_index_square_to_coordinates(BlockIndex block_index, BlockSquareCompact square)
+  static coordinates_type block_index_square_to_coordinates(BlockIndex block_index, BlockSquareCompact square)
   {
     return block_index.index() | (square.coordinates() << block_square_shift);
   }
@@ -46,7 +46,7 @@ class KingSquare
     ASSERT((coordinates_ & ~mask) == 0);
   }
 
-  constexpr KingSquare(int x, int y) : coordinates_(block_index_square_to_coordinates(xy_to_block_index(x, y), xy_to_block_square(x, y))) { }
+  KingSquare(int x, int y) : coordinates_(block_index_square_to_coordinates(xy_to_block_index(x, y), xy_to_block_square(x, y))) { }
 
   // Accessors.
   BlockIndex block_index() const { return coordinates_ & block_index_mask; }

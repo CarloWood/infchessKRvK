@@ -1,6 +1,8 @@
 #ifndef BOARD_H
 #define BOARD_H
 
+#include "Partition.h"
+#include "PartitionElement.h"
 #include "Square.h"
 #include "../Color.h"
 #include "utils/macros.h"
@@ -15,11 +17,9 @@
 using utils::has_print_on::operator<<;
 #endif
 
-// Forward declaration.
+// Forward declarations.
 class Board;
-
-// The index used for vectors that store Info objects.
-using InfoIndex = utils::VectorIndex<Board>;
+class Graph;
 
 class Board
 {
@@ -86,7 +86,10 @@ class Board
     encoded_((encoded_type{bk.coordinates()} << black_king_shift) |
              (encoded_type{wk.coordinates()} << white_king_shift) |
               encoded_type{wr.coordinates()}) { }
-  Board(InfoIndex info_index) : encoded_(static_cast<encoded_type>(info_index.get_value())) { }
+  Board(Partition partition, PartitionElement partition_element) : Board(
+      {KingSquare::block_index_square_to_coordinates(partition.black_king_block_index(), partition_element.black_king_square())},
+      {KingSquare::block_index_square_to_coordinates(partition.white_king_block_index(), partition_element.white_king_square())},
+      partition_element.white_rook_square().coordinates()) { }
 
   Board& operator=(encoded_type encoded)
   {
@@ -126,7 +129,8 @@ class Board
     return static_cast<WhiteRookSquare::coordinates_type>(encoded_ & white_rook_mask);
   }
 
-  InfoIndex as_index() const { return InfoIndex{static_cast<size_t>(encoded_)}; }
+  Partition as_partition() const { return {black_king().block_index(), white_king().block_index()}; }
+  PartitionElement as_partition_element() const { return {black_king().block_square(), white_king().block_square(), white_rook()}; }
 
   // Convenience functions to extract the individual coordinates from the compact object returned by black_king.
   static auto x_coord(BlackKingSquare square) { return square.block_index().x_coord() + square.block_square().x_coord(); }
@@ -166,8 +170,12 @@ class Board
   std::string get_move(Board to_board) const;
 
   friend bool operator==(Board lhs, Board rhs) { return lhs.encoded_ == rhs.encoded_; }
+  friend bool operator<(Board lhs, Board rhs) { return lhs.encoded_ < rhs.encoded_; }
 
 #ifdef CWDEBUG
+  // Test member function generate_neighbors.
+  static void generate_neighbors_testsuite(Graph const& graph);
+
   // Allow printing a Board to an ostream.
   void print_on(std::ostream& os) const;
 
@@ -175,7 +183,7 @@ class Board
   void debug_utf8art(libcwd::channel_ct const& debug_channel, Square marker = Square{-1, -1}) const;
 #endif
 
- public: //FIXME private:
+ private:
   // Used by black_has_moves, determine_check, determine_draw and get_succeeding_boards.
   std::tuple<Square, Square, Square> abbreviations() const;
 
@@ -373,6 +381,13 @@ class Board
   {
     constexpr int index_shift = color == black ? black_king_shift : white_king_shift;
     return (encoded_ >> index_shift) & BlockIndex::mask;
+  }
+
+  template<color_type color>
+  BlockSquareCompact block_square() const
+  {
+    constexpr int block_square_shift = (color == black ? black_king_shift : white_king_shift) + KingSquare::block_square_shift;
+    return (encoded_ >> block_square_shift) & Size::block::square_mask;
   }
 };
 

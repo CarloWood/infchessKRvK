@@ -1,10 +1,10 @@
 #include "sys.h"
 #include "Info.h"
+#include "Graph.h"
 #include "utils/endian.h"
 #include "debug.h"
 
-void Info::black_to_move_set_maximum_ply_on_parents(
-    nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out)
+void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, Graph& graph, std::vector<Board>& parents_out)
 {
   // Only call black_to_move_set_maximum_ply_on_parents on a position that already has its `mate_in_ply_` determined.
   ASSERT(classification().ply() != Classification::unknown_ply);
@@ -15,7 +15,6 @@ void Info::black_to_move_set_maximum_ply_on_parents(
   // This number of ply doesn't fit in a ply_type.
   ASSERT(max_ply != Classification::unknown_ply);
   // Generate all parent positions.
-  Board const current_board(current);
   Board::neighbors_type parents;
   int number_of_parents = current_board.generate_neighbors<Board::parents, white>(parents);
 #ifdef CWDEBUG
@@ -23,7 +22,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
-    Info& parent_info = parent_infos[parent.as_index()];
+    Info& parent_info = graph.get_info<white>(parent);
     if (!parent_info.classification().is_legal())
     {
       oops = true;
@@ -38,7 +37,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(
     for (int i = 0; i < number_of_parents; ++i)
     {
       Board const& parent = parents[i];
-      Info& parent_info = parent_infos[parent.as_index()];
+      Info& parent_info = graph.get_info<white>(parent);
       if (!parent_info.classification().is_legal())
         std::cout << "ILLEGAL Parent " << i << ":\n";
       else
@@ -51,7 +50,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
-    Info& parent_info = parent_infos[parent.as_index()];
+    Info& parent_info = graph.get_info<white>(parent);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
     int parent_ply = parent_info.classification().ply();
@@ -71,7 +70,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(
 }
 
 void Info::white_to_move_set_minimum_ply_on_parents(
-    nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out)
+    Board const current_board, Graph& graph, std::vector<Board>& parents_out)
 {
   // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_ply_` detemined.
   ASSERT(classification().ply() != Classification::unknown_ply);
@@ -79,14 +78,13 @@ void Info::white_to_move_set_minimum_ply_on_parents(
   // it is black to move and black would pick the move that leads to mate in the largest number of moves.
   int const min_ply = classification().ply() + 1;
   // Generate all parent positions.
-  Board const current_board(current);
   Board::neighbors_type parents;
   int number_of_parents = current_board.generate_neighbors<Board::parents, black>(parents);
   // Run over all parent positions.
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
-    Info& parent_info = parent_infos[parent.as_index()];
+    Info& parent_info = graph.get_info<black>(parent);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
 

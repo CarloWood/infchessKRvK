@@ -20,6 +20,15 @@ int main()
   int const block_size_y = Size::block::y;
   Dout(dc::notice, "Block size: " << block_size_x << "x" << block_size_y);
 
+  Dout(dc::notice, "Size::block::coord_bits_x = " << Size::block::coord_bits_x);
+  Dout(dc::notice, "Size::block::limit_x = " << Size::block::limit_x);
+  Dout(dc::notice, "Size::block::limit_y = " << Size::block::limit_y);
+  Dout(dc::notice, "Size::block::limit_y | Size::block::limit_x = " << (Size::block::limit_y | Size::block::limit_x));
+  Dout(dc::notice, "Size::block::square_bits = " << Size::block::square_bits);
+  Dout(dc::notice, "Size::block::square_mask = " << Size::block::square_mask);
+  Dout(dc::notice, "(Size::block::limit_y | Size::block::limit_x) & ~Size::block::square_mask = " <<
+      ((Size::block::limit_y | Size::block::limit_x) & ~Size::block::square_mask));
+
   Dout(dc::notice, "Classification::unknown_ply = " << static_cast<uint32_t>(Classification::unknown_ply));
   Dout(dc::notice, "Classification::max_ply_upperbound = " << static_cast<uint32_t>(Classification::max_ply_upperbound));
   Dout(dc::notice, "Classification::ply_bits = " << static_cast<uint32_t>(Classification::ply_bits));
@@ -27,7 +36,7 @@ int main()
   // Construct the initial graph with all positions that are already mate.
   auto start2 = std::chrono::high_resolution_clock::now();
 
-  Graph graph2;
+  Graph& graph2 = *new Graph;
 
   int total_positions2;
   int draw_positions2 = 0;
@@ -38,47 +47,54 @@ int main()
   // Generate all possible positions.
   graph2.classify();
 
-  std::vector<InfoIndex> already_mate2;
+  std::vector<Board> already_mate2;
 
   // Black to move positions.
   {
-    Graph::info_nodes_type& black_to_move = graph2.black_to_move();
+    auto const& black_to_move_partition = graph2.black_to_move_partition();
     total_positions2 = 0;
-    for (Graph::info_nodes_type::index_type current_info_index = black_to_move.ibegin();
-        current_info_index != black_to_move.iend(); ++current_info_index)
+    for (Partition current_partition = black_to_move_partition.ibegin();
+        current_partition != black_to_move_partition.iend(); ++current_partition)
     {
-      Info const& info = black_to_move[current_info_index];
-      Classification const& pc = info.classification();
-      if (!pc.is_legal())
-        continue;
-      ++total_positions2;
-      if (pc.is_draw())
-        ++draw_positions2;
-      if (pc.is_check())
-        ++black_in_check_positions2;
-      if (pc.is_mate())
+      for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
+          current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
       {
-        ++mate_positions2;
-        already_mate2.push_back(current_info_index);
+        Info const& info = graph2.get_info<black>(current_partition, current_partition_element);
+        Classification const& pc = info.classification();
+        if (!pc.is_legal())
+          continue;
+        ++total_positions2;
+        if (pc.is_draw())
+          ++draw_positions2;
+        if (pc.is_check())
+          ++black_in_check_positions2;
+        if (pc.is_mate())
+        {
+          ++mate_positions2;
+          already_mate2.emplace_back(current_partition, current_partition_element);
+        }
+        if (pc.is_stalemate())
+          ++stalemate_positions2;
       }
-      if (pc.is_stalemate())
-        ++stalemate_positions2;
     }
   }
   // White to move positions.
   {
-    Graph::info_nodes_type& white_to_move = graph2.white_to_move();
-    // Run over all legal positions in white_to_move_map.
-    for (Graph::info_nodes_type::index_type current_info_index = white_to_move.ibegin();
-        current_info_index != white_to_move.iend(); ++current_info_index)
+    auto const& white_to_move_partition = graph2.white_to_move_partition();
+    for (Graph::partitions_type::index_type current_partition = white_to_move_partition.ibegin();
+        current_partition != white_to_move_partition.iend(); ++current_partition)
     {
-      Info const& info = white_to_move[current_info_index];
-      Classification const& pc = info.classification();
-      if (!pc.is_legal())
-        continue;
-      ++total_positions2;
-      if (pc.is_draw())
-        ++draw_positions2;
+      for (Graph::partitions_type::value_type::index_type current_partition_element = white_to_move_partition[current_partition].ibegin();
+          current_partition_element != white_to_move_partition[current_partition].iend(); ++current_partition_element)
+      {
+        Info const& info = graph2.get_info<white>(current_partition, current_partition_element);
+        Classification const& pc = info.classification();
+        if (!pc.is_legal())
+          continue;
+        ++total_positions2;
+        if (pc.is_draw())
+          ++draw_positions2;
+      }
     }
   }
 
@@ -111,14 +127,12 @@ int main()
   // Run over all positions that are already mate (as per the classification)
   // and mark all position that can reach those as mate in 1 ply.
   std::vector<Board> white_to_move_parents2;
-  Graph::info_nodes_type& black_to_move = graph2.black_to_move();
-  Graph::info_nodes_type& white_to_move = graph2.white_to_move();
-  for (InfoIndex info_index : already_mate2)
+  for (Board current_board : already_mate2)
   {
-    Info& black_to_move_info = black_to_move[info_index];
+    Info& black_to_move_info = graph2.get_info<black>(current_board);
     black_to_move_info.classification().set_mate_in_ply(0);
-    //Board{info_index}.debug_utf8art(DEBUGCHANNELS::dc::notice);
-    black_to_move_info.black_to_move_set_maximum_ply_on_parents(info_index, white_to_move, white_to_move_parents2);
+    //current_board.debug_utf8art(DEBUGCHANNELS::dc::notice);
+    black_to_move_info.black_to_move_set_maximum_ply_on_parents(current_board, graph2, white_to_move_parents2);
   }
 
   Board initial_position;
@@ -134,13 +148,12 @@ int main()
       {
         for (Board white_to_move_board : white_to_move_parents2)
         {
-          InfoIndex white_to_move_index = white_to_move_board.as_index();
-          Info& white_to_move_info = white_to_move[white_to_move_index];
+          Info& white_to_move_info = graph2.get_info<white>(white_to_move_board);
           // All returned parents should be legal.
           ASSERT(white_to_move_info.classification().is_legal());
           ASSERT(white_to_move_info.classification().ply() == ply);
           size_t s = black_to_move_parents.size();
-          white_to_move_info.white_to_move_set_minimum_ply_on_parents(white_to_move_index, black_to_move, black_to_move_parents);
+          white_to_move_info.white_to_move_set_minimum_ply_on_parents(white_to_move_board, graph2, black_to_move_parents);
         }
       }
 
@@ -158,13 +171,12 @@ int main()
       {
         for (Board black_to_move_board : black_to_move_parents)
         {
-          InfoIndex black_to_move_index = black_to_move_board.as_index();
-          Info& black_to_move_info = black_to_move[black_to_move_index];
+          Info& black_to_move_info = graph2.get_info<black>(black_to_move_board);
           // All returned parents should be legal.
           ASSERT(black_to_move_info.classification().is_legal());
           ASSERT(black_to_move_info.classification().ply() == ply);
           size_t s = white_to_move_parents2.size();
-          black_to_move_info.black_to_move_set_maximum_ply_on_parents(black_to_move_index, white_to_move, white_to_move_parents2);
+          black_to_move_info.black_to_move_set_maximum_ply_on_parents(black_to_move_board, graph2, white_to_move_parents2);
         }
       }
 
@@ -178,518 +190,59 @@ int main()
   }
 
   std::string filename = std::format("/opt/verylarge/chessgames/infchessKRvK/info{}x{}-{}x{}.txt", Size::Bx, Size::By, Size::Px, Size::Py);
-  Dout(dc::notice, "Writing " << filename << "...");
+  std::cout << "Writing " << filename << "..." << std::endl;
   std::fstream file(filename, std::ios::out | std::ios::binary | std::ios::trunc);
   if (!file)
     DoutFatal(dc::core, "Failed to open " << filename << " for writing!");
   graph2.write_to(file);
   file.close();
 
-  Graph g;
-  Graph::info_nodes_type& black_to_move2 = g.black_to_move();
-  Graph::info_nodes_type& white_to_move2 = g.white_to_move();
-  ASSERT(black_to_move2.size() == black_to_move.size());
-  ASSERT(white_to_move2.size() == white_to_move.size());
+  Graph& g = *new Graph;
 
-  Dout(dc::notice, "Reading " << filename << "...");
+#if CW_DEBUG
+  std::cout << "Reading " << filename << "..." << std::endl;
   file.open(filename, std::ios::in | std::ios::binary);
   if (!file)
     DoutFatal(dc::core, "Failed to open " << filename << " for reading!");
   g.read_from(file);
   file.close();
 
-  Dout(dc::notice, "Testing contents for black to move...");
-  for (InfoIndex i = black_to_move.ibegin(); i != black_to_move.iend(); ++i)
+  std::cout << "Testing contents for black to move..." << std::endl;
+  auto const& black_to_move_partition = graph2.black_to_move_partition();
+  for (Partition current_partition = black_to_move_partition.ibegin();
+      current_partition != black_to_move_partition.iend(); ++current_partition)
   {
-    Info const& info1 = black_to_move[i];
-    Info const& info2 = black_to_move2[i];
-    ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
-  }
-  Dout(dc::notice, "Testing contents for white to move...");
-  for (InfoIndex i = white_to_move.ibegin(); i != white_to_move.iend(); ++i)
-  {
-    Info const& info1 = white_to_move[i];
-    Info const& info2 = white_to_move2[i];
-    ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
-  }
-
-#if 0   // Board::generate_neighbors testsuite.
-
-  constexpr int center_x = Size::board::x / 3;
-  constexpr int center_y = Size::board::y / 3;
-
-  BlackKingSquare const bk_positions[] = {
-    {0, 0},                                     // Corner
-    {0, Size::board::y - 1},                    // Corner
-    {Size::board::x - 1, 0},                    // Corner
-    {Size::board::x - 1, Size::board::y - 1},   // Corner
-    {0, center_y},                              // Edge (west)
-    {Size::board::x - 1, center_y},             // Edge (east)
-    {center_x, 0},                              // Edge (south)
-    {center_x, Size::board::y - 1},             // Edge (north)
-    {center_x, center_y}                        // Center (no edges)
-  };
-
-  struct Pos
-  {
-    int c;
-    bool c_is_offset;
-
-    int operator+(int c_) const
+    for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
+        current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
     {
-      if (c_is_offset)
-        return c + c_;
-      return c;
-    }
-
-    bool operator==(Pos const& rhs) const
-    {
-      return c == rhs.c && c_is_offset == rhs.c_is_offset;
-    }
-  };
-  struct PosOffset { Pos x; Pos y; };
-
-  std::vector<PosOffset> wk_offsets;
-  wk_offsets.emplace_back(Pos{2 * center_x, false}, Pos{2 * center_y, false});   // Far away (no influence).
-  // Two squares away.
-  for (int i = -2; i <= 2; ++i)
-  {
-    wk_offsets.emplace_back(Pos{i, true}, Pos{-2, true});
-    wk_offsets.emplace_back(Pos{i, true}, Pos{2, true});
-    if (i > -2 && i < 2)
-    {
-      wk_offsets.emplace_back(Pos{-2, true}, Pos{i, true});
-      wk_offsets.emplace_back(Pos{2, true}, Pos{i, true});
+      Info const& info1 = graph2.get_info<black>(current_partition, current_partition_element);
+      Info const& info2 = g.get_info<black>(current_partition, current_partition_element);
+      ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
     }
   }
-
-  std::array<Pos, 5> wr_positions_x = {{{0, false}, {-1, true}, {0, true}, {1, true}, {Size::board::x - 1, false}}};
-  std::array<Pos, 5> wr_positions_y = {{{0, false}, {-1, true}, {0, true}, {1, true}, {Size::board::y - 1, false}}};
-
-  std::vector<PosOffset> wr_positions;
-  for (Pos const& pox : wr_positions_x)
-    for (Pos const& poy : wr_positions_y)
-      wr_positions.emplace_back(pox, poy);
-
-  // Generate positions that test every part of black move generation and
-  // check that generate_neighbors generates precisely all the legal positions.
-  // The generated child positions are stored in white_to_move_children.
-  std::vector<Board> white_to_move_children;
-  for (BlackKingSquare const& bk : bk_positions)
-    for (PosOffset const& wkpo : wk_offsets)
-    {
-      int wkx = wkpo.x + bk.x_coord();
-      int wky = wkpo.y + bk.y_coord();
-      if (wkx < 0 || wkx >= Size::board::x || wky < 0 || wky >= Size::board::y)
-        continue;
-      WhiteKingSquare wk(wkx, wky);
-      // Keep track of absolute rook squares already emitted for this bk/wk pair.
-      std::set<std::pair<int, int>> seen_wr;
-      for (PosOffset const& wrpo : wr_positions)
-      {
-        int wrx = wrpo.x + bk.x_coord();
-        int wry = wrpo.y + bk.y_coord();
-        if (wrx < 0 || wrx >= Size::board::x || wry < 0 || wry >= Size::board::y)
-          continue;
-        // Never try to generate moves after the white rook is already captured.
-        if (wrx == bk.x_coord() && wry == bk.y_coord())
-          continue;
-        // Skip duplicate absolute rook square.
-        auto const key = std::make_pair(wrx, wry);
-        if (!seen_wr.insert(key).second)
-          continue;
-        WhiteRookSquare wr(wrx, wry);
-        Board board(bk, wk, wr);
-        constexpr Color to_move = black;
-        // Skip all illegal positions.
-        Graph::info_nodes_type& black_to_move = graph2.black_to_move();
-        if (!black_to_move[board.as_index()].classification().is_legal())
-          continue;
-        std::cout << "Original position: " << board << "\n";
-        board.utf8art(std::cout, to_move, false);
-        // Get the current x,y coordinates of all pieces.
-        auto [cbk, cwk, cwr] = board.abbreviations();
-        Graph::info_nodes_type& white_to_move = graph2.white_to_move();
-        std::set<InfoIndex> legal_moves;
-        int n = 0;
-        {
-          // Brute force all legal black king moves.
-          using namespace coordinates;
-          for (int bkx = cbk[x] - 1; bkx <= cbk[x] + 1; ++bkx)
-            for (int bky = cbk[y] - 1; bky <= cbk[y] + 1; ++bky)
-            {
-              if (bkx == cbk[x] && bky == cbk[y])
-                continue;
-              if (bkx < 0 || bkx >= Size::board::x || bky < 0 || bky >= Size::board::y)
-                continue;
-              Board b({bkx, bky}, {cwk[x], cwk[y]}, {cwr[x], cwr[y]});
-              if (white_to_move[b.as_index()].classification().is_legal())
-              {
-                legal_moves.insert(b.as_index());
-                ++n;
-              }
-            }
-        }
-        ASSERT(legal_moves.size() == n);
-        std::cout << "which has " << n << " legal moves.\n";
-        Board::neighbors_type white_to_move_neighbors;
-        int number_of_white_to_move_neighbors = board.generate_neighbors<Board::children, to_move>(white_to_move_neighbors);
-        if (legal_moves.size() != number_of_white_to_move_neighbors)
-        {
-          std::cout << "Generated moves:" << std::endl;
-          for (int i = 0; i < number_of_white_to_move_neighbors; ++i)
-            white_to_move_neighbors[i].utf8art(std::cout, to_move.opponent());
-        }
-        // All possibly legal moves must be generated.
-        ASSERT(legal_moves.size() == number_of_white_to_move_neighbors);
-        for (int i = 0; i < number_of_white_to_move_neighbors; ++i)
-        {
-          // Verify that every generated move corresponds with one of the possible legal moves.
-          ASSERT(legal_moves.find(white_to_move_neighbors[i].as_index()) != legal_moves.end());
-          white_to_move_children.push_back(white_to_move_neighbors[i]);
-        }
-      }
-    }
-
-  WhiteKingSquare const wk_positions[] = {
-    {0, 0},                                     // Corner
-    {0, Size::board::y - 1},                    // Corner
-    {Size::board::x - 1, 0},                    // Corner
-    {Size::board::x - 1, Size::board::y - 1},   // Corner
-    {0, center_y},                              // Edge (west)
-    {Size::board::x - 1, center_y},             // Edge (east)
-    {center_x, 0},                              // Edge (south)
-    {center_x, Size::board::y - 1},             // Edge (north)
-    {center_x, center_y}                        // Center (no edges)
-  };
-
-  std::vector<PosOffset> bk_offsets;
-  bk_offsets.emplace_back(Pos{2 * center_x, false}, Pos{2 * center_y, false});   // Far away (no influence).
-  // Two squares away.
-  for (int i = -2; i <= 2; ++i)
+  std::cout << "Testing contents for white to move..." << std::endl;
+  auto const& white_to_move_partition = graph2.white_to_move_partition();
+  for (Partition current_partition = white_to_move_partition.ibegin();
+      current_partition != white_to_move_partition.iend(); ++current_partition)
   {
-    bk_offsets.emplace_back(Pos{i, true}, Pos{-2, true});
-    bk_offsets.emplace_back(Pos{i, true}, Pos{2, true});
-    if (i > -2 && i < 2)
+    for (PartitionElement current_partition_element = white_to_move_partition[current_partition].ibegin();
+        current_partition_element != white_to_move_partition[current_partition].iend(); ++current_partition_element)
     {
-      bk_offsets.emplace_back(Pos{-2, true}, Pos{i, true});
-      bk_offsets.emplace_back(Pos{2, true}, Pos{i, true});
+      Info const& info1 = graph2.get_info<white>(current_partition, current_partition_element);
+      Info const& info2 = g.get_info<white>(current_partition, current_partition_element);
+      ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
     }
   }
-
-  // Generate positions that test every part of white move generation and
-  // check that generate_neighbors generates precisely all the legal positions.
-  std::vector<Board> black_to_move_children;
-  for (WhiteKingSquare const& wk : wk_positions)
-    for (PosOffset const& bkpo : bk_offsets)
-    {
-      int bkx = bkpo.x + wk.x_coord();
-      int bky = bkpo.y + wk.y_coord();
-      if (bkx < 0 || bkx >= Size::board::x || bky < 0 || bky >= Size::board::y)
-        continue;
-      BlackKingSquare bk(bkx, bky);
-      // Keep track of absolute rook squares already emitted for this bk/wk pair.
-      std::set<std::pair<int, int>> seen_wr;
-      for (PosOffset const& wrpo : wr_positions)
-      {
-        int wrx = wrpo.x + bk.x_coord();
-        int wry = wrpo.y + bk.y_coord();
-        if (wrx < 0 || wrx >= Size::board::x || wry < 0 || wry >= Size::board::y)
-          continue;
-        if (wrx == wk.x_coord() && wry == wk.y_coord())
-          continue;
-        // Never try to generate moves after the white rook is already captured.
-        if (wrx == bk.x_coord() && wry == bk.y_coord())
-          continue;
-        // Skip duplicate absolute rook square.
-        auto const key = std::make_pair(wrx, wry);
-        if (!seen_wr.insert(key).second)
-          continue;
-        WhiteRookSquare wr(wrx, wry);
-        Board board(bk, wk, wr);
-        constexpr Color to_move = white;
-        // Skip all illegal positions.
-        Graph::info_nodes_type& white_to_move = graph2.white_to_move();
-        if (!white_to_move[board.as_index()].classification().is_legal())
-          continue;
-        std::cout << "Original position:\n";
-        board.utf8art(std::cout, to_move, false);
-        // Get the current x,y coordinates of all pieces.
-        auto [cbk, cwk, cwr] = board.abbreviations();
-        Graph::info_nodes_type& black_to_move = graph2.black_to_move();
-        std::set<InfoIndex> legal_moves;
-        int n = 0;
-        {
-          // Brute force all legal white king moves.
-          using namespace coordinates;
-          for (int wkx = cwk[x] - 1; wkx <= cwk[x] + 1; ++wkx)
-            for (int wky = cwk[y] - 1; wky <= cwk[y] + 1; ++wky)
-            {
-              if (wkx == cwk[x] && wky == cwk[y])
-                continue;
-              if (wkx < 0 || wkx >= Size::board::x || wky < 0 || wky >= Size::board::y)
-                continue;
-              Board b({cbk[x], cbk[y]}, {wkx, wky}, {cwr[x], cwr[y]});
-              if (black_to_move[b.as_index()].classification().is_legal())
-              {
-                legal_moves.insert(b.as_index());
-                ++n;
-              }
-            }
-          // Brute force all legal white rook moves.
-          int wry = cwr[y];
-          for (int wrx = cwr[x] + 1; wrx < Size::board::x; ++wrx)
-          {
-            // Don't move through the white king.
-            if (wrx == cwk[x] && wry == cwk[y])
-              break;
-            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-            if (black_to_move[b.as_index()].classification().is_legal())
-            {
-              legal_moves.insert(b.as_index());
-              ++n;
-            }
-          }
-          for (int wrx = cwr[x] - 1; wrx >= 0; --wrx)
-          {
-            // Don't move through the white king.
-            if (wrx == cwk[x] && wry == cwk[y])
-              break;
-            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-            if (black_to_move[b.as_index()].classification().is_legal())
-            {
-              legal_moves.insert(b.as_index());
-              ++n;
-            }
-          }
-          int wrx = cwr[x];
-          for (int wry = cwr[y] + 1; wry < Size::board::y; ++wry)
-          {
-            // Don't move through the white king.
-            if (wrx == cwk[x] && wry == cwk[y])
-              break;
-            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-            if (black_to_move[b.as_index()].classification().is_legal())
-            {
-              legal_moves.insert(b.as_index());
-              ++n;
-            }
-          }
-          for (int wry = cwr[y] - 1; wry >= 0; --wry)
-          {
-            // Don't move through the white king.
-            if (wrx == cwk[x] && wry == cwk[y])
-              break;
-            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-            if (black_to_move[b.as_index()].classification().is_legal())
-            {
-              legal_moves.insert(b.as_index());
-              ++n;
-            }
-          }
-        }
-        ASSERT(legal_moves.size() == n);
-        std::cout << "which has " << n << " legal moves.\n";
-        Board::neighbors_type black_to_move_neighbors;
-        int number_of_black_to_move_neighbors = board.generate_neighbors<Board::children, to_move>(black_to_move_neighbors);
-        if (legal_moves.size() != number_of_black_to_move_neighbors)
-        {
-          std::cout << "Generated moves:" << std::endl;
-          for (int i = 0; i < number_of_black_to_move_neighbors; ++i)
-            black_to_move_neighbors[i].utf8art(std::cout, to_move.opponent());
-        }
-        // All possibly legal moves must be generated.
-        ASSERT(legal_moves.size() == number_of_black_to_move_neighbors);
-        for (int i = 0; i < number_of_black_to_move_neighbors; ++i)
-        {
-          // Verify that every generated move corresponds with one of the possible legal moves.
-          ASSERT(legal_moves.find(black_to_move_neighbors[i].as_index()) != legal_moves.end());
-          black_to_move_children.push_back(black_to_move_neighbors[i]);
-        }
-      }
-    }
-
-    // Run over all generated positions to test every part of black-to-move parent generation
-    // and check that generate_neighbors generates precisely all the legal positions.
-    std::cout << "Running over " << white_to_move_children.size() << " (child) positions." << std::endl;
-    for (int i = 0; i < (int)white_to_move_children.size(); ++i)
-    {
-      Board board = white_to_move_children[i];
-      constexpr Color to_move = white;
-      // Get the current x,y coordinates of all pieces.
-      auto [cbk, cwk, cwr] = board.abbreviations();
-      if (cbk == cwr)
-        continue;       // Can't find parent positions where the white rook was already taken.
-
-      std::cout << "Original child position:\n";
-      board.utf8art(std::cout, to_move, false);
-
-      Graph::info_nodes_type& black_to_move = graph2.black_to_move();
-      std::set<InfoIndex> legal_moves;
-      int n = 0;
-      {
-        // Brute force all legal black king moves.
-        using namespace coordinates;
-        for (int bkx = cbk[x] - 1; bkx <= cbk[x] + 1; ++bkx)
-          for (int bky = cbk[y] - 1; bky <= cbk[y] + 1; ++bky)
-          {
-            if (bkx == cbk[x] && bky == cbk[y])
-              continue;
-            if (bkx < 0 || bkx >= Size::board::x || bky < 0 || bky >= Size::board::y)
-              continue;
-            Board b({bkx, bky}, {cwk[x], cwk[y]}, {cwr[x], cwr[y]});
-            if (black_to_move[b.as_index()].classification().is_legal())
-            {
-              legal_moves.insert(b.as_index());
-              ++n;
-            }
-          }
-      }
-      ASSERT(legal_moves.size() == n);
-      std::cout << "which has " << n << " legal moves.\n";
-      Board::neighbors_type black_to_move_parents;
-      int number_of_parents = board.generate_neighbors<Board::parents, to_move.opponent()>(black_to_move_parents);
-      if (legal_moves.size() != number_of_parents)
-      {
-        std::cout << "Generated parents:" << std::endl;
-        for (int i = 0; i < number_of_parents; ++i)
-          black_to_move_parents[i].utf8art(std::cout, to_move.opponent());
-      }
-      // All possibly legal moves must be generated.
-      ASSERT(legal_moves.size() == number_of_parents);
-      for (int i = 0; i < number_of_parents; ++i)
-      {
-        // Verify that every generated move corresponds with one of the possible legal moves.
-        ASSERT(legal_moves.find(black_to_move_parents[i].as_index()) != legal_moves.end());
-      }
-    }
-
-    // Run over all generated positions to test every part of white-to-move parent generation
-    // and check that generate_neighbors generates precisely all the legal positions.
-    std::cout << "Running over " << black_to_move_children.size() << " (child) positions." << std::endl;
-    for (int i = 0; i < (int)black_to_move_children.size(); ++i)
-    {
-      Board board = black_to_move_children[i];
-      constexpr Color to_move = black;
-      // Get the current x,y coordinates of all pieces.
-      auto [cbk, cwk, cwr] = board.abbreviations();
-      if (cbk == cwr)
-        continue;       // Can't find parent positions where the white rook was already taken.
-
-      std::cout << "Original child position:\n";
-      board.utf8art(std::cout, to_move, false);
-
-      Graph::info_nodes_type& white_to_move = graph2.white_to_move();
-      std::set<InfoIndex> legal_moves;
-      int n = 0;
-      {
-        // Brute force all legal white king moves.
-        using namespace coordinates;
-        for (int wkx = cwk[x] - 1; wkx <= cwk[x] + 1; ++wkx)
-          for (int wky = cwk[y] - 1; wky <= cwk[y] + 1; ++wky)
-          {
-            if (wkx == cwk[x] && wky == cwk[y])
-              continue;
-            if (wkx < 0 || wkx >= Size::board::x || wky < 0 || wky >= Size::board::y)
-              continue;
-            Board b({cbk[x], cbk[y]}, {wkx, wky}, {cwr[x], cwr[y]});
-            if (white_to_move[b.as_index()].classification().is_legal())
-            {
-              legal_moves.insert(b.as_index());
-              ++n;
-            }
-          }
-        // Brute force all legal white rook moves.
-        int wry = cwr[y];
-        for (int wrx = cwr[x] + 1; wrx < Size::board::x; ++wrx)
-        {
-          // Don't move through the white king.
-          if (wrx == cwk[x] && wry == cwk[y])
-            break;
-          // Don't add parent positions where the rook is taken.
-          if (wrx == cbk[x] && wry == cbk[y])
-            break;
-          Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-          if (white_to_move[b.as_index()].classification().is_legal())
-          {
-            legal_moves.insert(b.as_index());
-            ++n;
-          }
-        }
-        for (int wrx = cwr[x] - 1; wrx >= 0; --wrx)
-        {
-          // Don't move through the white king.
-          if (wrx == cwk[x] && wry == cwk[y])
-            break;
-          // Don't add parent positions where the rook is taken.
-          if (wrx == cbk[x] && wry == cbk[y])
-            break;
-          Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-          if (white_to_move[b.as_index()].classification().is_legal())
-          {
-            legal_moves.insert(b.as_index());
-            ++n;
-          }
-        }
-        int wrx = cwr[x];
-        for (int wry = cwr[y] + 1; wry < Size::board::y; ++wry)
-        {
-          // Don't move through the white king.
-          if (wrx == cwk[x] && wry == cwk[y])
-            break;
-          // Don't add parent positions where the rook is taken.
-          if (wrx == cbk[x] && wry == cbk[y])
-            break;
-          Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-          if (white_to_move[b.as_index()].classification().is_legal())
-          {
-            legal_moves.insert(b.as_index());
-            ++n;
-          }
-        }
-        for (int wry = cwr[y] - 1; wry >= 0; --wry)
-        {
-          // Don't move through the white king.
-          if (wrx == cwk[x] && wry == cwk[y])
-            break;
-          // Don't add parent positions where the rook is taken.
-          if (wrx == cbk[x] && wry == cbk[y])
-            break;
-          Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
-          if (white_to_move[b.as_index()].classification().is_legal())
-          {
-            legal_moves.insert(b.as_index());
-            ++n;
-          }
-        }
-      }
-      ASSERT(legal_moves.size() == n);
-      std::cout << "which has " << n << " legal moves.\n";
-      Board::neighbors_type white_to_move_parents;
-      int number_of_parents = board.generate_neighbors<Board::parents, to_move.opponent()>(white_to_move_parents);
-      if (legal_moves.size() != number_of_parents)
-      {
-        std::cout << "Generated parents:" << std::endl;
-        for (int i = 0; i < number_of_parents; ++i)
-          white_to_move_parents[i].utf8art(std::cout, to_move.opponent());
-      }
-      // All possibly legal moves must be generated.
-      ASSERT(legal_moves.size() == number_of_parents);
-      for (int i = 0; i < number_of_parents; ++i)
-      {
-        // Verify that every generated move corresponds with one of the possible legal moves.
-        ASSERT(legal_moves.find(white_to_move_parents[i].as_index()) != legal_moves.end());
-      }
-    }
 #endif
+
+  //Board::generate_neighbors_testsuite(graph2);
 
 #if 0
   Board board = initial_position;
   Color to_move = initial_to_move;
   for (;;)
   {
-    Graph::info_nodes_type const& info_nodes = to_move == black ? graph2.black_to_move() : graph2.white_to_move();
-    Info const& info = info_nodes[board.as_index()];
+    Info const& info = to_move == black ? graph2.get_info<black>(board) : graph2.get_info<white>(board);
     int ply = info.classification().ply();
 
     std::cout << "\nCurrent position (" << to_move << " to move; mate in " << ply << " ply):\n";
@@ -706,12 +259,11 @@ int main()
 
     // Print all optimal moves:
     Dout(dc::notice|continued_cf, "Possible optimal moves: ");
-    Graph::info_nodes_type const& child_info_nodes = to_move == black ? graph2.white_to_move() : graph2.black_to_move();
     char const* separator = "";
     for (int i = 0; i < number_of_children; ++i)
     {
       Board b = child_positions[i];
-      Info const& child_info = child_info_nodes[b.as_index()];
+      Info const& child_info = to_move == black ? graph2.get_info<black>(b) : graph2.get_info<white>(b);
       int child_ply = child_info.classification().ply();
       if (child_ply == ply - 1)
       {
@@ -724,15 +276,15 @@ int main()
     std::cin.get();
 
 #if 1
-    InfoIndex ii;
+    bool first_time = true;
     for (int i = 0; i < number_of_children; ++i)
     {
       Board b = child_positions[i];
-      Info const& child_info = child_info_nodes[b.as_index()];
+      Info const& child_info = to_move == black ? graph2.get_info<black>(b) : graph2.get_info<white>(b);
       int child_ply = child_info.classification().ply();
-      if (child_ply == ply - 1 && (ii.undefined() || b.as_index() > ii))
+      if (child_ply == ply - 1 && (first_time || b > board))
       {
-        ii = b.as_index();
+        first_time = false;
         board = b;
       }
     }

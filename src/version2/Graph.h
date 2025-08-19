@@ -1,26 +1,54 @@
 #pragma once
 
-#include "Board.h"
+#include "Partition.h"
+#include "PartitionElement.h"
 #include "Info.h"
-#include "utils/Vector.h"
+#include "Board.h"
+#include "utils/Array.h"
 
 class Graph
 {
  public:
-  using info_nodes_type = Info::nodes_type;
-  static constexpr size_t info_nodes_size = size_t{1} << Board::encoded_bits;
+  static constexpr size_t partitions_size = Size::Px * Size::Py;
+  using partitions_type = utils::Array<Info::nodes_type, partitions_size, PartitionIndex>;
 
  private:
-  info_nodes_type black_to_move_{info_nodes_size};
-  info_nodes_type white_to_move_{info_nodes_size};
+  partitions_type black_to_move_;
+  partitions_type white_to_move_;
 
  public:
-  Info::nodes_type const& black_to_move() const { return black_to_move_; }
-  Info::nodes_type& black_to_move() { return black_to_move_; }
-  Info::nodes_type const& white_to_move() const { return white_to_move_; }
-  Info::nodes_type& white_to_move() { return white_to_move_; }
-
   void classify();
+
+  template<color_type to_move>
+  Info& get_info(Board board)
+  {
+    partitions_type& color_to_move = to_move == black ? black_to_move_ : white_to_move_;
+    return color_to_move[board.as_partition()][board.as_partition_element()];
+  }
+
+  template<color_type to_move>
+  Info const& get_info(Board board) const
+  {
+    partitions_type const& color_to_move = to_move == black ? black_to_move_ : white_to_move_;
+    return color_to_move[board.as_partition()][board.as_partition_element()];
+  }
+
+  template<color_type to_move>
+  Info& get_info(Partition partition, PartitionElement partition_element)
+  {
+    partitions_type& color_to_move = to_move == black ? black_to_move_ : white_to_move_;
+    return color_to_move[partition][partition_element];
+  }
+
+  partitions_type const& black_to_move_partition() const
+  {
+    return black_to_move_;
+  }
+
+  partitions_type const& white_to_move_partition() const
+  {
+    return white_to_move_;
+  }
 
   void write_to(std::ostream& os) const;
   void read_from(std::istream& is);

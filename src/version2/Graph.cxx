@@ -32,8 +32,7 @@ void Graph::classify()
 
                 if (pos.determine_legal(to_move))
                 {
-                  auto const index = pos.as_index();
-                  Info& info = (to_move == black) ? black_to_move_[index] : white_to_move_[index];
+                  Info& info = (to_move == black) ? get_info<black>(pos) : get_info<white>(pos);
                   Classification& classification = info.classification();
                   ASSERT(!classification.is_legal());
                   classification.determine(pos, to_move);
@@ -57,16 +56,78 @@ void Graph::classify()
 
 void Graph::write_to(std::ostream& os) const
 {
-  for (Info const& info : black_to_move_)
-    info.classification().write_to(os);
-  for (Info const& info : white_to_move_)
-    info.classification().write_to(os);
+  for (int bky = 0; bky < Size::board::y; ++bky)
+    for (int bkx = 0; bkx < Size::board::x; ++bkx)
+      for (int wky = 0; wky < Size::board::y; ++wky)
+        for (int wkx = 0; wkx < Size::board::x; ++wkx)
+          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
+            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+            {
+              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
+              {
+                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+                Info const& info = get_info<black>(board);
+                info.classification().write_to(os);
+              }
+              else
+                Classification{}.write_to(os);
+            }
+  for (int bky = 0; bky < Size::board::y; ++bky)
+    for (int bkx = 0; bkx < Size::board::x; ++bkx)
+      for (int wky = 0; wky < Size::board::y; ++wky)
+        for (int wkx = 0; wkx < Size::board::x; ++wkx)
+          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
+            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+            {
+              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
+              {
+                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+                Info const& info = get_info<white>(board);
+                info.classification().write_to(os);
+              }
+              else
+                Classification{}.write_to(os);
+            }
 }
 
 void Graph::read_from(std::istream& is)
 {
-  for (Info& info : black_to_move_)
-    info.classification().read_from(is);
-  for (Info& info : white_to_move_)
-    info.classification().read_from(is);
+  for (int bky = 0; bky < Size::board::y; ++bky)
+    for (int bkx = 0; bkx < Size::board::x; ++bkx)
+      for (int wky = 0; wky < Size::board::y; ++wky)
+        for (int wkx = 0; wkx < Size::board::x; ++wkx)
+          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
+            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+            {
+              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
+              {
+                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+                Info& info = get_info<black>(board);
+                info.classification().read_from(is);
+              }
+              else
+              {
+                Info dummy;
+                dummy.classification().read_from(is);
+              }
+            }
+  for (int bky = 0; bky < Size::board::y; ++bky)
+    for (int bkx = 0; bkx < Size::board::x; ++bkx)
+      for (int wky = 0; wky < Size::board::y; ++wky)
+        for (int wkx = 0; wkx < Size::board::x; ++wkx)
+          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
+            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+            {
+              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
+              {
+                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+                Info& info = get_info<white>(board);
+                info.classification().read_from(is);
+              }
+              else
+              {
+                Info dummy;
+                dummy.classification().read_from(is);
+              }
+            }
 }

@@ -1,5 +1,7 @@
 #include "sys.h"
 #include "Board.h"
+#include "Info.h"
+#include "Graph.h"
 #include "../Color.h"
 #include "utils/print_using.h"
 #include <utility>
@@ -532,7 +534,7 @@ void Board::utf8art(std::ostream& os, Color to_move, bool xyz, Square marker) co
 
 std::string Board::get_move(Board to_board) const
 {
-  encoded_type diff = static_cast<encoded_type>(as_index().get_value() ^ to_board.as_index().get_value());
+  encoded_type diff = encoded_ ^ to_board.encoded_;
 
   int x, y;
   char piece;
@@ -573,6 +575,485 @@ std::string Board::get_move(Board to_board) const
 }
 
 #ifdef CWDEBUG
+//static
+void Board::generate_neighbors_testsuite(Graph const& graph)
+{
+  constexpr int center_x = Size::board::x / 3;
+  constexpr int center_y = Size::board::y / 3;
+
+  BlackKingSquare const bk_positions[] = {
+    {0, 0},                                     // Corner
+    {0, Size::board::y - 1},                    // Corner
+    {Size::board::x - 1, 0},                    // Corner
+    {Size::board::x - 1, Size::board::y - 1},   // Corner
+    {0, center_y},                              // Edge (west)
+    {Size::board::x - 1, center_y},             // Edge (east)
+    {center_x, 0},                              // Edge (south)
+    {center_x, Size::board::y - 1},             // Edge (north)
+    {center_x, center_y}                        // Center (no edges)
+  };
+
+  struct Pos
+  {
+    int c;
+    bool c_is_offset;
+
+    int operator+(int c_) const
+    {
+      if (c_is_offset)
+        return c + c_;
+      return c;
+    }
+
+    bool operator==(Pos const& rhs) const
+    {
+      return c == rhs.c && c_is_offset == rhs.c_is_offset;
+    }
+  };
+  struct PosOffset { Pos x; Pos y; };
+
+  std::vector<PosOffset> wk_offsets;
+  wk_offsets.emplace_back(Pos{2 * center_x, false}, Pos{2 * center_y, false});   // Far away (no influence).
+  // Two squares away.
+  for (int i = -2; i <= 2; ++i)
+  {
+    wk_offsets.emplace_back(Pos{i, true}, Pos{-2, true});
+    wk_offsets.emplace_back(Pos{i, true}, Pos{2, true});
+    if (i > -2 && i < 2)
+    {
+      wk_offsets.emplace_back(Pos{-2, true}, Pos{i, true});
+      wk_offsets.emplace_back(Pos{2, true}, Pos{i, true});
+    }
+  }
+
+  std::array<Pos, 5> wr_positions_x = {{{0, false}, {-1, true}, {0, true}, {1, true}, {Size::board::x - 1, false}}};
+  std::array<Pos, 5> wr_positions_y = {{{0, false}, {-1, true}, {0, true}, {1, true}, {Size::board::y - 1, false}}};
+
+  std::vector<PosOffset> wr_positions;
+  for (Pos const& pox : wr_positions_x)
+    for (Pos const& poy : wr_positions_y)
+      wr_positions.emplace_back(pox, poy);
+
+  // Generate positions that test every part of black move generation and
+  // check that generate_neighbors generates precisely all the legal positions.
+  // The generated child positions are stored in white_to_move_children.
+  std::vector<Board> white_to_move_children;
+  for (BlackKingSquare const& bk : bk_positions)
+    for (PosOffset const& wkpo : wk_offsets)
+    {
+      int wkx = wkpo.x + bk.x_coord();
+      int wky = wkpo.y + bk.y_coord();
+      if (wkx < 0 || wkx >= Size::board::x || wky < 0 || wky >= Size::board::y)
+        continue;
+      WhiteKingSquare wk(wkx, wky);
+      // Keep track of absolute rook squares already emitted for this bk/wk pair.
+      std::set<std::pair<int, int>> seen_wr;
+      for (PosOffset const& wrpo : wr_positions)
+      {
+        int wrx = wrpo.x + bk.x_coord();
+        int wry = wrpo.y + bk.y_coord();
+        if (wrx < 0 || wrx >= Size::board::x || wry < 0 || wry >= Size::board::y)
+          continue;
+        // Never try to generate moves after the white rook is already captured.
+        if (wrx == bk.x_coord() && wry == bk.y_coord())
+          continue;
+        // Skip duplicate absolute rook square.
+        auto const key = std::make_pair(wrx, wry);
+        if (!seen_wr.insert(key).second)
+          continue;
+        WhiteRookSquare wr(wrx, wry);
+        Board board(bk, wk, wr);
+        constexpr Color to_move = black;
+        // Skip all illegal positions.
+        Info const& info = graph.get_info<black>(board);
+        if (!info.classification().is_legal())
+          continue;
+        std::cout << "Original position: " << board << "\n";
+        board.utf8art(std::cout, to_move, false);
+        // Get the current x,y coordinates of all pieces.
+        auto [cbk, cwk, cwr] = board.abbreviations();
+        std::set<Board> legal_moves;
+        int n = 0;
+        {
+          // Brute force all legal black king moves.
+          using namespace coordinates;
+          for (int bkx = cbk[x] - 1; bkx <= cbk[x] + 1; ++bkx)
+            for (int bky = cbk[y] - 1; bky <= cbk[y] + 1; ++bky)
+            {
+              if (bkx == cbk[x] && bky == cbk[y])
+                continue;
+              if (bkx < 0 || bkx >= Size::board::x || bky < 0 || bky >= Size::board::y)
+                continue;
+              Board b({bkx, bky}, {cwk[x], cwk[y]}, {cwr[x], cwr[y]});
+              Info const& info_b = graph.get_info<white>(b);
+              if (info_b.classification().is_legal())
+              {
+                legal_moves.insert(b);
+                ++n;
+              }
+            }
+        }
+        ASSERT(legal_moves.size() == n);
+        std::cout << "which has " << n << " legal moves.\n";
+        Board::neighbors_type white_to_move_neighbors;
+        int number_of_white_to_move_neighbors = board.generate_neighbors<Board::children, to_move>(white_to_move_neighbors);
+        if (legal_moves.size() != number_of_white_to_move_neighbors)
+        {
+          std::cout << "Generated moves:" << std::endl;
+          for (int i = 0; i < number_of_white_to_move_neighbors; ++i)
+            white_to_move_neighbors[i].utf8art(std::cout, to_move.opponent());
+        }
+        // All possibly legal moves must be generated.
+        ASSERT(legal_moves.size() == number_of_white_to_move_neighbors);
+        for (int i = 0; i < number_of_white_to_move_neighbors; ++i)
+        {
+          // Verify that every generated move corresponds with one of the possible legal moves.
+          ASSERT(legal_moves.find(white_to_move_neighbors[i]) != legal_moves.end());
+          white_to_move_children.push_back(white_to_move_neighbors[i]);
+        }
+      }
+    }
+
+  WhiteKingSquare const wk_positions[] = {
+    {0, 0},                                     // Corner
+    {0, Size::board::y - 1},                    // Corner
+    {Size::board::x - 1, 0},                    // Corner
+    {Size::board::x - 1, Size::board::y - 1},   // Corner
+    {0, center_y},                              // Edge (west)
+    {Size::board::x - 1, center_y},             // Edge (east)
+    {center_x, 0},                              // Edge (south)
+    {center_x, Size::board::y - 1},             // Edge (north)
+    {center_x, center_y}                        // Center (no edges)
+  };
+
+  std::vector<PosOffset> bk_offsets;
+  bk_offsets.emplace_back(Pos{2 * center_x, false}, Pos{2 * center_y, false});   // Far away (no influence).
+  // Two squares away.
+  for (int i = -2; i <= 2; ++i)
+  {
+    bk_offsets.emplace_back(Pos{i, true}, Pos{-2, true});
+    bk_offsets.emplace_back(Pos{i, true}, Pos{2, true});
+    if (i > -2 && i < 2)
+    {
+      bk_offsets.emplace_back(Pos{-2, true}, Pos{i, true});
+      bk_offsets.emplace_back(Pos{2, true}, Pos{i, true});
+    }
+  }
+
+  // Generate positions that test every part of white move generation and
+  // check that generate_neighbors generates precisely all the legal positions.
+  std::vector<Board> black_to_move_children;
+  for (WhiteKingSquare const& wk : wk_positions)
+    for (PosOffset const& bkpo : bk_offsets)
+    {
+      int bkx = bkpo.x + wk.x_coord();
+      int bky = bkpo.y + wk.y_coord();
+      if (bkx < 0 || bkx >= Size::board::x || bky < 0 || bky >= Size::board::y)
+        continue;
+      BlackKingSquare bk(bkx, bky);
+      // Keep track of absolute rook squares already emitted for this bk/wk pair.
+      std::set<std::pair<int, int>> seen_wr;
+      for (PosOffset const& wrpo : wr_positions)
+      {
+        int wrx = wrpo.x + bk.x_coord();
+        int wry = wrpo.y + bk.y_coord();
+        if (wrx < 0 || wrx >= Size::board::x || wry < 0 || wry >= Size::board::y)
+          continue;
+        if (wrx == wk.x_coord() && wry == wk.y_coord())
+          continue;
+        // Never try to generate moves after the white rook is already captured.
+        if (wrx == bk.x_coord() && wry == bk.y_coord())
+          continue;
+        // Skip duplicate absolute rook square.
+        auto const key = std::make_pair(wrx, wry);
+        if (!seen_wr.insert(key).second)
+          continue;
+        WhiteRookSquare wr(wrx, wry);
+        Board board(bk, wk, wr);
+        constexpr Color to_move = white;
+        // Skip all illegal positions.
+        Info const& info = graph.get_info<white>(board);
+        if (!info.classification().is_legal())
+          continue;
+        std::cout << "Original position:\n";
+        board.utf8art(std::cout, to_move, false);
+        // Get the current x,y coordinates of all pieces.
+        auto [cbk, cwk, cwr] = board.abbreviations();
+        std::set<Board> legal_moves;
+        int n = 0;
+        {
+          // Brute force all legal white king moves.
+          using namespace coordinates;
+          for (int wkx = cwk[x] - 1; wkx <= cwk[x] + 1; ++wkx)
+            for (int wky = cwk[y] - 1; wky <= cwk[y] + 1; ++wky)
+            {
+              if (wkx == cwk[x] && wky == cwk[y])
+                continue;
+              if (wkx < 0 || wkx >= Size::board::x || wky < 0 || wky >= Size::board::y)
+                continue;
+              Board b({cbk[x], cbk[y]}, {wkx, wky}, {cwr[x], cwr[y]});
+              Info const& info_b = graph.get_info<black>(b);
+              if (info_b.classification().is_legal())
+              {
+                legal_moves.insert(b);
+                ++n;
+              }
+            }
+          // Brute force all legal white rook moves.
+          int wry = cwr[y];
+          for (int wrx = cwr[x] + 1; wrx < Size::board::x; ++wrx)
+          {
+            // Don't move through the white king.
+            if (wrx == cwk[x] && wry == cwk[y])
+              break;
+            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+            Info const& info_b = graph.get_info<black>(b);
+            if (info_b.classification().is_legal())
+            {
+              legal_moves.insert(b);
+              ++n;
+            }
+          }
+          for (int wrx = cwr[x] - 1; wrx >= 0; --wrx)
+          {
+            // Don't move through the white king.
+            if (wrx == cwk[x] && wry == cwk[y])
+              break;
+            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+            Info const& info_b = graph.get_info<black>(b);
+            if (info_b.classification().is_legal())
+            {
+              legal_moves.insert(b);
+              ++n;
+            }
+          }
+          int wrx = cwr[x];
+          for (int wry = cwr[y] + 1; wry < Size::board::y; ++wry)
+          {
+            // Don't move through the white king.
+            if (wrx == cwk[x] && wry == cwk[y])
+              break;
+            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+            Info const& info_b = graph.get_info<black>(b);
+            if (info_b.classification().is_legal())
+            {
+              legal_moves.insert(b);
+              ++n;
+            }
+          }
+          for (int wry = cwr[y] - 1; wry >= 0; --wry)
+          {
+            // Don't move through the white king.
+            if (wrx == cwk[x] && wry == cwk[y])
+              break;
+            Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+            Info const& info_b = graph.get_info<black>(b);
+            if (info_b.classification().is_legal())
+            {
+              legal_moves.insert(b);
+              ++n;
+            }
+          }
+        }
+        ASSERT(legal_moves.size() == n);
+        std::cout << "which has " << n << " legal moves.\n";
+        Board::neighbors_type black_to_move_neighbors;
+        int number_of_black_to_move_neighbors = board.generate_neighbors<Board::children, to_move>(black_to_move_neighbors);
+        if (legal_moves.size() != number_of_black_to_move_neighbors)
+        {
+          std::cout << "Generated moves:" << std::endl;
+          for (int i = 0; i < number_of_black_to_move_neighbors; ++i)
+            black_to_move_neighbors[i].utf8art(std::cout, to_move.opponent());
+        }
+        // All possibly legal moves must be generated.
+        ASSERT(legal_moves.size() == number_of_black_to_move_neighbors);
+        for (int i = 0; i < number_of_black_to_move_neighbors; ++i)
+        {
+          // Verify that every generated move corresponds with one of the possible legal moves.
+          ASSERT(legal_moves.find(black_to_move_neighbors[i]) != legal_moves.end());
+          black_to_move_children.push_back(black_to_move_neighbors[i]);
+        }
+      }
+    }
+
+  // Run over all generated positions to test every part of black-to-move parent generation
+  // and check that generate_neighbors generates precisely all the legal positions.
+  std::cout << "Running over " << white_to_move_children.size() << " (child) positions." << std::endl;
+  for (int i = 0; i < (int)white_to_move_children.size(); ++i)
+  {
+    Board board = white_to_move_children[i];
+    constexpr Color to_move = white;
+    // Get the current x,y coordinates of all pieces.
+    auto [cbk, cwk, cwr] = board.abbreviations();
+    if (cbk == cwr)
+      continue;       // Can't find parent positions where the white rook was already taken.
+
+    std::cout << "Original child position:\n";
+    board.utf8art(std::cout, to_move, false);
+
+    std::set<Board> legal_moves;
+    int n = 0;
+    {
+      // Brute force all legal black king moves.
+      using namespace coordinates;
+      for (int bkx = cbk[x] - 1; bkx <= cbk[x] + 1; ++bkx)
+        for (int bky = cbk[y] - 1; bky <= cbk[y] + 1; ++bky)
+        {
+          if (bkx == cbk[x] && bky == cbk[y])
+            continue;
+          if (bkx < 0 || bkx >= Size::board::x || bky < 0 || bky >= Size::board::y)
+            continue;
+          Board b({bkx, bky}, {cwk[x], cwk[y]}, {cwr[x], cwr[y]});
+          Info const& info_b = graph.get_info<black>(b);
+          if (info_b.classification().is_legal())
+          {
+            legal_moves.insert(b);
+            ++n;
+          }
+        }
+    }
+    ASSERT(legal_moves.size() == n);
+    std::cout << "which has " << n << " legal moves.\n";
+    Board::neighbors_type black_to_move_parents;
+    int number_of_parents = board.generate_neighbors<Board::parents, to_move.opponent()>(black_to_move_parents);
+    if (legal_moves.size() != number_of_parents)
+    {
+      std::cout << "Generated parents:" << std::endl;
+      for (int i = 0; i < number_of_parents; ++i)
+        black_to_move_parents[i].utf8art(std::cout, to_move.opponent());
+    }
+    // All possibly legal moves must be generated.
+    ASSERT(legal_moves.size() == number_of_parents);
+    for (int i = 0; i < number_of_parents; ++i)
+    {
+      // Verify that every generated move corresponds with one of the possible legal moves.
+      ASSERT(legal_moves.find(black_to_move_parents[i]) != legal_moves.end());
+    }
+  }
+
+  // Run over all generated positions to test every part of white-to-move parent generation
+  // and check that generate_neighbors generates precisely all the legal positions.
+  std::cout << "Running over " << black_to_move_children.size() << " (child) positions." << std::endl;
+  for (int i = 0; i < (int)black_to_move_children.size(); ++i)
+  {
+    Board board = black_to_move_children[i];
+    constexpr Color to_move = black;
+    // Get the current x,y coordinates of all pieces.
+    auto [cbk, cwk, cwr] = board.abbreviations();
+    if (cbk == cwr)
+      continue;       // Can't find parent positions where the white rook was already taken.
+
+    std::cout << "Original child position:\n";
+    board.utf8art(std::cout, to_move, false);
+
+    std::set<Board> legal_moves;
+    int n = 0;
+    {
+      // Brute force all legal white king moves.
+      using namespace coordinates;
+      for (int wkx = cwk[x] - 1; wkx <= cwk[x] + 1; ++wkx)
+        for (int wky = cwk[y] - 1; wky <= cwk[y] + 1; ++wky)
+        {
+          if (wkx == cwk[x] && wky == cwk[y])
+            continue;
+          if (wkx < 0 || wkx >= Size::board::x || wky < 0 || wky >= Size::board::y)
+            continue;
+          Board b({cbk[x], cbk[y]}, {wkx, wky}, {cwr[x], cwr[y]});
+          Info const& info_b = graph.get_info<white>(b);
+          if (info_b.classification().is_legal())
+          {
+            legal_moves.insert(b);
+            ++n;
+          }
+        }
+      // Brute force all legal white rook moves.
+      int wry = cwr[y];
+      for (int wrx = cwr[x] + 1; wrx < Size::board::x; ++wrx)
+      {
+        // Don't move through the white king.
+        if (wrx == cwk[x] && wry == cwk[y])
+          break;
+        // Don't add parent positions where the rook is taken.
+        if (wrx == cbk[x] && wry == cbk[y])
+          break;
+        Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+        Info const& info_b = graph.get_info<white>(b);
+        if (info_b.classification().is_legal())
+        {
+          legal_moves.insert(b);
+          ++n;
+        }
+      }
+      for (int wrx = cwr[x] - 1; wrx >= 0; --wrx)
+      {
+        // Don't move through the white king.
+        if (wrx == cwk[x] && wry == cwk[y])
+          break;
+        // Don't add parent positions where the rook is taken.
+        if (wrx == cbk[x] && wry == cbk[y])
+          break;
+        Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+        Info const& info_b = graph.get_info<white>(b);
+        if (info_b.classification().is_legal())
+        {
+          legal_moves.insert(b);
+          ++n;
+        }
+      }
+      int wrx = cwr[x];
+      for (int wry = cwr[y] + 1; wry < Size::board::y; ++wry)
+      {
+        // Don't move through the white king.
+        if (wrx == cwk[x] && wry == cwk[y])
+          break;
+        // Don't add parent positions where the rook is taken.
+        if (wrx == cbk[x] && wry == cbk[y])
+          break;
+        Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+        Info const& info_b = graph.get_info<white>(b);
+        if (info_b.classification().is_legal())
+        {
+          legal_moves.insert(b);
+          ++n;
+        }
+      }
+      for (int wry = cwr[y] - 1; wry >= 0; --wry)
+      {
+        // Don't move through the white king.
+        if (wrx == cwk[x] && wry == cwk[y])
+          break;
+        // Don't add parent positions where the rook is taken.
+        if (wrx == cbk[x] && wry == cbk[y])
+          break;
+        Board b({cbk[x], cbk[y]}, {cwk[x], cwk[y]}, {wrx, wry});
+        Info const& info_b = graph.get_info<white>(b);
+        if (info_b.classification().is_legal())
+        {
+          legal_moves.insert(b);
+          ++n;
+        }
+      }
+    }
+    ASSERT(legal_moves.size() == n);
+    std::cout << "which has " << n << " legal moves.\n";
+    Board::neighbors_type white_to_move_parents;
+    int number_of_parents = board.generate_neighbors<Board::parents, to_move.opponent()>(white_to_move_parents);
+    if (legal_moves.size() != number_of_parents)
+    {
+      std::cout << "Generated parents:" << std::endl;
+      for (int i = 0; i < number_of_parents; ++i)
+        white_to_move_parents[i].utf8art(std::cout, to_move.opponent());
+    }
+    // All possibly legal moves must be generated.
+    ASSERT(legal_moves.size() == number_of_parents);
+    for (int i = 0; i < number_of_parents; ++i)
+    {
+      // Verify that every generated move corresponds with one of the possible legal moves.
+      ASSERT(legal_moves.find(white_to_move_parents[i]) != legal_moves.end());
+    }
+  }
+}
+
 void Board::debug_utf8art(libcwd::channel_ct const& debug_channel, Square marker) const
 {
   if (!debug_channel.is_on())

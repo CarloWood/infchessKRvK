@@ -1,11 +1,14 @@
 #pragma once
 
+#include "PartitionElement.h"
 #include "Board.h"
 #include "Classification.h"
 #include "utils/has_print_on.h"
-#include "utils/Vector.h"
+#include "utils/Array.h"
 #include <limits>
 #include <cmath>
+
+class Graph;
 
 // This class defines a print_on method.
 using utils::has_print_on::operator<<;
@@ -20,7 +23,7 @@ class Info
   using degree_type = uint_type<max_degree_bits>;
 
   // The vector type used to store all Info objects (members of Graph).
-  using nodes_type = utils::Vector<Info, InfoIndex>;
+  using nodes_type = utils::Array<Info, Partition::number_of_elements, InfoIndex>;
 
  private:
   Classification classification_;               // The classification of this position.
@@ -36,10 +39,8 @@ class Info
   degree_type number_of_visited_children() const { return number_of_visited_children_; }
 
   // Given that black is to move, set the mate_in_ply_ value on each of the parent positions.
-  void black_to_move_set_maximum_ply_on_parents(
-      nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out);
-  void white_to_move_set_minimum_ply_on_parents(
-      nodes_type::index_type current, nodes_type& parent_infos, std::vector<Board>& parents_out);
+  void black_to_move_set_maximum_ply_on_parents(Board const current_board, Graph& graph, std::vector<Board>& parents_out);
+  void white_to_move_set_minimum_ply_on_parents(Board const current_board, Graph& graph, std::vector<Board>& parents_out);
 
   void set_number_of_children(degree_type number_of_children)
   {

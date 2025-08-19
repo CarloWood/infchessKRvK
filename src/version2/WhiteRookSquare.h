@@ -11,5 +11,5 @@ class WhiteRookSquare : public SquareCompact<Size::board>
   static constexpr coordinates_type mask = Size::board::square_mask;
 
   WhiteRookSquare(coordinates_type square) : SquareCompact<Size::board>(square) { }
-  constexpr WhiteRookSquare(int x, int y) : SquareCompact<Size::board>(x, y) { }
+  WhiteRookSquare(int x, int y) : SquareCompact<Size::board>(x, y) { }
 };
