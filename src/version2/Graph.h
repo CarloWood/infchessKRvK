@@ -6,6 +6,7 @@
 #include "Board.h"
 #include "utils/Array.h"
 #include "utils/square.h"
+#include <filesystem>
 
 class Graph
 {
@@ -14,10 +15,12 @@ class Graph
   using partitions_type = utils::Array<Info::nodes_type, partitions_size, PartitionIndex>;
 
  private:
+  std::filesystem::path directory_;
   partitions_type black_to_move_;
   partitions_type white_to_move_;
 
  public:
+  Graph(std::filesystem::path directory) : directory_(std::move(directory)) { }
   void classify();
 
   template<color_type to_move>

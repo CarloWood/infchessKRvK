@@ -38,7 +38,8 @@ int main()
   // Construct the initial graph with all positions that are already mate.
   auto start = std::chrono::high_resolution_clock::now();
 
-  Graph& graph = *new Graph;
+  std::filesystem::path const data_dir = "/opt/verylarge/chessgames/infchessKRvK";
+  Graph& graph = *new Graph(data_dir);
 
   int total_positions;
   int draw_positions = 0;
@@ -196,7 +197,7 @@ int main()
     Dout(dc::notice, "max ply = " << ply);
   }
 
-  std::string filename = std::format("/opt/verylarge/chessgames/infchessKRvK/info{}x{}-{}x{}.txt", Size::Bx, Size::By, Size::Px, Size::Py);
+  std::filesystem::path filename = data_dir / std::format("info{}x{}-{}x{}.txt", Size::Bx, Size::By, Size::Px, Size::Py);
   std::cout << "Writing " << filename << "..." << std::endl;
   std::fstream file(filename, std::ios::out | std::ios::binary | std::ios::trunc);
   if (!file)
@@ -204,7 +205,7 @@ int main()
   graph.write_to(file);
   file.close();
 
-  Graph& g = *new Graph;
+  Graph& g = *new Graph(data_dir);
 
 #if CW_DEBUG
   std::cout << "Reading " << filename << "..." << std::endl;
