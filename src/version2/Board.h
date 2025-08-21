@@ -26,7 +26,7 @@ class Board
  public:
   static constexpr int encoded_bits = BlackKingSquare::bits + WhiteKingSquare::bits + WhiteRookSquare::bits;
   using encoded_type = uint_type<encoded_bits>;
-  static constexpr int available_bits = std::numeric_limits<encoded_type>::digits;
+  static constexpr int total_bits = sizeof(encoded_type) * CHAR_BIT;
   static constexpr int black_king_shift = WhiteRookSquare::bits + WhiteKingSquare::bits;
   static constexpr int white_king_shift = WhiteRookSquare::bits;
   static constexpr encoded_type black_king_mask = BlackKingSquare::mask;

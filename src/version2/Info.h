@@ -23,7 +23,7 @@ class Info
   using degree_type = uint_type<max_degree_bits>;
 
   // The vector type used to store all Info objects (members of Graph).
-  using nodes_type = utils::Array<Info, Partition::number_of_elements, InfoIndex>;
+  using nodes_type = utils::Array<Info, PartitionElement::number_of_elements, InfoIndex>;
 
  private:
   Classification classification_;               // The classification of this position.

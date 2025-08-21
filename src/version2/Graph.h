@@ -5,11 +5,12 @@
 #include "Info.h"
 #include "Board.h"
 #include "utils/Array.h"
+#include "utils/square.h"
 
 class Graph
 {
  public:
-  static constexpr size_t partitions_size = Size::Px * Size::Py;
+  static constexpr size_t partitions_size = utils::square(Size::Px * Size::Py);
   using partitions_type = utils::Array<Info::nodes_type, partitions_size, PartitionIndex>;
 
  private:

@@ -21,13 +21,15 @@ int main()
   Dout(dc::notice, "Block size: " << block_size_x << "x" << block_size_y);
 
   Dout(dc::notice, "Size::block::coord_bits_x = " << Size::block::coord_bits_x);
-  Dout(dc::notice, "Size::block::limit_x = " << Size::block::limit_x);
-  Dout(dc::notice, "Size::block::limit_y = " << Size::block::limit_y);
-  Dout(dc::notice, "Size::block::limit_y | Size::block::limit_x = " << (Size::block::limit_y | Size::block::limit_x));
+  Dout(dc::notice, "Size::block::limit_x = " << static_cast<uint32_t>(Size::block::limit_x));
+  Dout(dc::notice, "Size::block::limit_y = " << static_cast<uint32_t>(Size::block::limit_y));
+  Dout(dc::notice, "Size::block::limit_y | Size::block::limit_x = " << static_cast<uint32_t>(Size::block::limit_y | Size::block::limit_x));
   Dout(dc::notice, "Size::block::square_bits = " << Size::block::square_bits);
-  Dout(dc::notice, "Size::block::square_mask = " << Size::block::square_mask);
+  Dout(dc::notice, "Size::block::square_mask = " << static_cast<uint32_t>(Size::block::square_mask));
   Dout(dc::notice, "(Size::block::limit_y | Size::block::limit_x) & ~Size::block::square_mask = " <<
-      ((Size::block::limit_y | Size::block::limit_x) & ~Size::block::square_mask));
+      static_cast<uint32_t>((Size::block::limit_y | Size::block::limit_x) & ~Size::block::square_mask));
+  Dout(dc::notice, "Size::board::square_bits = " << Size::board::square_bits);
+  Dout(dc::notice, "Size::board::square_mask = " << static_cast<uint32_t>(Size::board::square_mask));
 
   Dout(dc::notice, "Classification::unknown_ply = " << static_cast<uint32_t>(Classification::unknown_ply));
   Dout(dc::notice, "Classification::max_ply_upperbound = " << static_cast<uint32_t>(Classification::max_ply_upperbound));
@@ -59,6 +61,11 @@ int main()
       for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
           current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
       {
+//        Dout(dc::notice, "Board for partition " << static_cast<PartitionIndex>(current_partition) <<
+//            " / element " << static_cast<InfoIndex>(current_partition_element) << " :");
+        Board current_board(current_partition, current_partition_element);
+//        current_board.debug_utf8art(DEBUGCHANNELS::dc::notice);
+
         Info const& info = graph2.get_info<black>(current_partition, current_partition_element);
         Classification const& pc = info.classification();
         if (!pc.is_legal())

@@ -12,7 +12,7 @@ class KingSquare
  public:
   static constexpr int bits = Size::block::square_bits + BlockIndex::number_of_blocks_bits;
   using coordinates_type = uint_type<bits>;
-  static constexpr int available_bits = std::numeric_limits<coordinates_type>::digits;
+  static constexpr int total_bits = sizeof(coordinates_type) * CHAR_BIT;
   static constexpr coordinates_type mask = create_mask<coordinates_type, bits>();
   static constexpr int block_square_shift = BlockIndex::number_of_blocks_bits;
   static constexpr coordinates_type block_index_mask = create_mask<coordinates_type, BlockIndex::number_of_blocks_bits>();

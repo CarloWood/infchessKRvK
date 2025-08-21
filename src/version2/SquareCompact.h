@@ -17,6 +17,12 @@ constexpr void constexpr_assert(bool condition, const char* message = "assertion
     }
 }
 
+// A SquareCompact wraps an unsigned integral type that encodes the
+// coordinates of the square as:
+//   [ unused ][ y-coord-bits ][ x-coord-bits ].
+//             <-coord_bits_y-><-coord_bits_x->         Both coord_bits_y and coord_bits_x are the minimum required width in bits.
+//   <---------------total_bits--------------->         (nearest power of two (8, 16, 32 or 64))
+//
 template<RectangleSizeConcept RectangleSize>
 class SquareCompact
 {

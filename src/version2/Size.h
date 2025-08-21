@@ -76,7 +76,7 @@ struct RectangleSize
   // Define the smallest type that can hold all required bits.
   using coordinates_type = uint_type<square_bits>;
   // Get the number of bits in `coordinates_type`.
-  static constexpr int available_bits = std::numeric_limits<coordinates_type>::digits;
+  static constexpr int total_bits = sizeof(coordinates_type) * CHAR_BIT;
 
   // Lets store the coordinates of a Square as:
   //
@@ -130,10 +130,10 @@ concept RectangleSizeConcept = requires(T rectangle_size) {
 struct Size
 {
  public:
-  static constexpr unsigned int Bx = 21;         // Width in squares of one "king block".
-  static constexpr unsigned int By = 21;         // Height in square of one "king block".
-  static constexpr unsigned int Px = 1;
-  static constexpr unsigned int Py = 1;
+  static constexpr unsigned int Bx = 5;         // Width in squares of one "king block".
+  static constexpr unsigned int By = 6;         // Height in square of one "king block".
+  static constexpr unsigned int Px = 6;
+  static constexpr unsigned int Py = 5;
 
   static constexpr unsigned int board_size_x = Bx * Px;
   static constexpr unsigned int board_size_y = By * Py;
