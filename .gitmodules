@@ -10,3 +10,7 @@
 	path = utils
 	url = https://github.com/CarloWood/ai-utils.git
 	branch = master
+[submodule "memory"]
+	path = memory
+	url = https://github.com/CarloWood/memory.git
+	branch = master
