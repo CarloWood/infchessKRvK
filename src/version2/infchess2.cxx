@@ -59,6 +59,7 @@ int main()
     for (Partition current_partition = black_to_move_partition.ibegin();
         current_partition != black_to_move_partition.iend(); ++current_partition)
     {
+      Dout(dc::notice, "Partition " << static_cast<PartitionIndex>(current_partition) << " : " << graph.partition_filename(current_partition));
       for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
           current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
       {

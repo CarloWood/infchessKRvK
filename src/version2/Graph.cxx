@@ -60,33 +60,23 @@ void Graph::write_to(std::ostream& os) const
     for (int bkx = 0; bkx < Size::board::x; ++bkx)
       for (int wky = 0; wky < Size::board::y; ++wky)
         for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
-            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+          for (int wry = 0; wry < Size::board::y; ++wry)
+            for (int wrx = 0; wrx < Size::board::x; ++wrx)
             {
-              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
-              {
-                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-                Info const& info = get_info<black>(board);
-                info.classification().write_to(os);
-              }
-              else
-                Classification{}.write_to(os);
+              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+              Info const& info = get_info<black>(board);
+              info.classification().write_to(os);
             }
   for (int bky = 0; bky < Size::board::y; ++bky)
     for (int bkx = 0; bkx < Size::board::x; ++bkx)
       for (int wky = 0; wky < Size::board::y; ++wky)
         for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
-            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+          for (int wry = 0; wry < Size::board::y; ++wry)
+            for (int wrx = 0; wrx < Size::board::x; ++wrx)
             {
-              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
-              {
-                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-                Info const& info = get_info<white>(board);
-                info.classification().write_to(os);
-              }
-              else
-                Classification{}.write_to(os);
+              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+              Info const& info = get_info<white>(board);
+              info.classification().write_to(os);
             }
 }
 
@@ -96,38 +86,29 @@ void Graph::read_from(std::istream& is)
     for (int bkx = 0; bkx < Size::board::x; ++bkx)
       for (int wky = 0; wky < Size::board::y; ++wky)
         for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
-            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+          for (int wry = 0; wry < Size::board::y; ++wry)
+            for (int wrx = 0; wrx < Size::board::x; ++wrx)
             {
-              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
-              {
-                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-                Info& info = get_info<black>(board);
-                info.classification().read_from(is);
-              }
-              else
-              {
-                Info dummy;
-                dummy.classification().read_from(is);
-              }
+              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+              Info& info = get_info<black>(board);
+              info.classification().read_from(is);
             }
   for (int bky = 0; bky < Size::board::y; ++bky)
     for (int bkx = 0; bkx < Size::board::x; ++bkx)
       for (int wky = 0; wky < Size::board::y; ++wky)
         for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < 32 /*Size::board::y*/; ++wry)
-            for (int wrx = 0; wrx < 32 /*Size::board::x*/; ++wrx)
+          for (int wry = 0; wry < Size::board::y; ++wry)
+            for (int wrx = 0; wrx < Size::board::x; ++wrx)
             {
-              if (utils::is_between_le_lt(0, wrx, (int)Size::board::x) && utils::is_between_le_lt(0, wry, (int)Size::board::y))
-              {
-                Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-                Info& info = get_info<white>(board);
-                info.classification().read_from(is);
-              }
-              else
-              {
-                Info dummy;
-                dummy.classification().read_from(is);
-              }
+              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
+              Info& info = get_info<white>(board);
+              info.classification().read_from(is);
             }
+}
+
+std::filesystem::path Graph::partition_filename(Partition partition) const
+{
+  BlockIndex bkbi = partition.black_king_block_index();
+  BlockIndex wkbi = partition.white_king_block_index();
+  return partition_directory_ / std::format("info_b{}_w{}", static_cast<uint32_t>(bkbi.index()), static_cast<uint32_t>(wkbi.index()));
 }
