@@ -24,10 +24,10 @@ class Classification
   // We need to add two extra because
   //    I) unknown_ply may not used, and
   //    II) set_maximum_ply_on_parents tests against the last found ply (that can have
-  //    the maximum value returned by this formula) PLUS one and that still needs to be less than unknown_ply.
+  //    the maximum value returned by this formula) PLUS one and that still needs to be less than std::numeric_limits<ply_type>::max().
   // For example, for board_size = 28 the maximum possible number of ply that a position is mate is 254,
-  // which means we need to be able to have 255 (one more) available as less than unknown_ply: unknown_ply >= 256 -->
-  // unknown_ply = 511 and we need 9 bits.
+  // which means we need to be able to have 255 (one more) available as less than 'power of 2 minus 1' (the max()): max >= 256 -->
+  // max = 511 and we need 9 bits.
   static constexpr int ply_bits = utils::log2(max_ply_upperbound + 2) + 1;
 
   static constexpr int number_of_bits = 5;
@@ -38,7 +38,8 @@ class Classification
   static constexpr encoded_type mate_in_ply_mask = create_mask<encoded_type, ply_bits>() << mate_in_ply_shift;
 
   using ply_type = uint_type<ply_bits>;
-  static constexpr ply_type unknown_ply = create_mask<encoded_type, ply_bits>();
+  static constexpr ply_type encoded_unknown_ply = 0;
+  static constexpr int unknown_ply = -1;
 
   static constexpr encoded_type mate = 1;
   static constexpr encoded_type stalemate = 2;
@@ -51,8 +52,16 @@ class Classification
   encoded_type encoded_;                        // <mate_in_moves><bits>
 
  public:
-  // Initialize <mate_in_ply> with unknown_ply.
-  Classification() : encoded_{static_cast<encoded_type>(unknown_ply) << mate_in_ply_shift} { }
+  // Do nothing if this is the default constructor;
+  // in that case we make use of the fact that this is constructed with
+  // placement-new on a memory image that already contains initialized data.
+  Classification(bool initialize = false) { if (initialize) Classification::initialize(); }
+
+  // Call this if the underlying memory was not already initialized.
+  void initialize()
+  {
+    encoded_ = 0;       // Not mate, stalemate, draw, check or legal(!) - and mate_in_ply is unknown.
+  }
 
   void determine(Board const& board, Color to_move);
 
@@ -79,13 +88,14 @@ class Classification
   void set_mate_in_ply(ply_type ply)
   {
     // Only call this function with an argument that makes sense.
-    ASSERT(ply < unknown_ply);
+    ASSERT(ply < std::numeric_limits<ply_type>::max());
     // If it is a draw, then it isn't mate in `ply` moves; so why is this function being called?
     ASSERT(!is_draw());
     // If it mate then `ply` must be zero.
     ASSERT(is_mate() == (ply == 0));
     encoded_ &= ~mate_in_ply_mask;
-    encoded_ |= static_cast<encoded_type>(ply) << mate_in_ply_shift;
+    // Add +1 to the encoded ply because zero means "unknown".
+    encoded_ |= static_cast<encoded_type>(ply + 1) << mate_in_ply_shift;
   }
 
   // Accessors.
@@ -94,7 +104,8 @@ class Classification
   bool is_draw() const { return (encoded_ & draw); }
   bool is_check() const { return (encoded_ & check); }
   bool is_legal() const { return (encoded_ & legal); }
-  int ply() const { return encoded_ >> mate_in_ply_shift; }
+  // Subtract 1 again to undo the +1 in set_mate_in_ply.
+  int ply() const { return (encoded_ >> mate_in_ply_shift) - 1; }
 
   // Serialization.
   void write_to(std::ostream& os) const;

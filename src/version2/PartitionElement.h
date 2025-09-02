@@ -44,7 +44,7 @@ class PartitionElement : private PartitionElementBase
   static constexpr SquareCompact<Size::board> wrs{Size::board::limit_y | Size::board::limit_x};
 
  public:
-  // The is the number of elements in a single Partition: one more than the largest value that will ever be stored in an InfoIndex.
+  // This is the number of elements in a single Partition: one more than the largest value that will ever be stored in an InfoIndex.
   static constexpr size_t number_of_elements = info_index(bks, wks, wrs).get_value() + 1;
 
  private:

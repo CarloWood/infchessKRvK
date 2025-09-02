@@ -8,12 +8,12 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
 {
   // Only call black_to_move_set_maximum_ply_on_parents on a position that already has its `mate_in_ply_` determined.
   ASSERT(classification().ply() != Classification::unknown_ply);
+  // This number of ply doesn't fit in a ply_type.
+  ASSERT(classification().ply() < std::numeric_limits<Classification::ply_type>::max());
   // No parent position can be mate in more than `mate_in_ply_ + 1` ply, because in the parent
   // position it is white to move and white would pick the move that leads to mate in the least
   // number of moves.
   Classification::ply_type const max_ply = classification().ply() + 1;
-  // This number of ply doesn't fit in a ply_type.
-  ASSERT(max_ply != Classification::unknown_ply);
   // Generate all parent positions.
   Board::neighbors_type parents;
   int number_of_parents = current_board.generate_neighbors<Board::parents, white>(parents);

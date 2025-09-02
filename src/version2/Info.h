@@ -28,10 +28,23 @@ class Info
  private:
   Classification classification_;               // The classification of this position.
   // The following are only valid if this position is legal.
-  degree_type number_of_children_{};            // The number of (legal) positions that can be reached from this position.
-  degree_type number_of_visited_children_{0};   // The number of children that visited this parent, during generation of the graph.
+  degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
+  degree_type number_of_visited_children_;      // The number of children that visited this parent, during generation of the graph.
 
  public:
+  // Do nothing if this is the default constructor;
+  // in that case we make use of the fact that this is constructed with
+  // placement-new on a memory image that already contains initialized data.
+  Info(bool initialize = false) { if (initialize) Info::initialize(); }
+
+  void initialize()
+  {
+    // This set everything to zero.
+    classification_.initialize();
+    number_of_children_ = 0;
+    number_of_visited_children_ = 0;
+  }
+
   // Accessors.
   Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }
