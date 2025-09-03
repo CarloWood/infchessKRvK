@@ -251,7 +251,7 @@ int main()
     file.close();
 #endif
 
-    Graph const g(prefix_directory, false);
+    Graph const g(prefix_directory, true);
 
 #if CW_DEBUG
 #if 0
