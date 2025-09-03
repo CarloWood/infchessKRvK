@@ -21,19 +21,6 @@ int main()
   int const block_size_x = Size::block::x;
   int const block_size_y = Size::block::y;
   Dout(dc::notice, "Block size: " << block_size_x << "x" << block_size_y);
-
-  Dout(dc::notice, "Size::block::coord_bits_x = " << Size::block::coord_bits_x);
-  Dout(dc::notice, "Size::block::limit_x = " << static_cast<uint32_t>(Size::block::limit_x));
-  Dout(dc::notice, "Size::block::limit_y = " << static_cast<uint32_t>(Size::block::limit_y));
-  Dout(dc::notice, "Size::block::limit_y | Size::block::limit_x = " << static_cast<uint32_t>(Size::block::limit_y | Size::block::limit_x));
-  Dout(dc::notice, "Size::block::square_bits = " << Size::block::square_bits);
-  Dout(dc::notice, "Size::block::square_mask = " << static_cast<uint32_t>(Size::block::square_mask));
-  Dout(dc::notice, "(Size::block::limit_y | Size::block::limit_x) & ~Size::block::square_mask = " <<
-      static_cast<uint32_t>((Size::block::limit_y | Size::block::limit_x) & ~Size::block::square_mask));
-  Dout(dc::notice, "Size::board::square_bits = " << Size::board::square_bits);
-  Dout(dc::notice, "Size::board::square_mask = " << static_cast<uint32_t>(Size::board::square_mask));
-
-  Dout(dc::notice, "Classification::encoded_unknown_ply = " << static_cast<uint32_t>(Classification::encoded_unknown_ply));
   Dout(dc::notice, "Classification::max_ply_upperbound = " << static_cast<uint32_t>(Classification::max_ply_upperbound));
   Dout(dc::notice, "Classification::ply_bits = " << static_cast<uint32_t>(Classification::ply_bits));
 
@@ -42,75 +29,123 @@ int main()
     // Construct the initial graph with all positions that are already mate.
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::filesystem::path const data_dir = "/opt/cache/infchessKRvK";
-    Graph graph(data_dir, true);
+    std::filesystem::path const prefix_directory = "/opt/verylarge/chessgames/infchessKRvK";
+    std::filesystem::path const data_directory = Graph::data_directory(prefix_directory);
+    std::filesystem::path const data_filename = Graph::data_filename(prefix_directory);
+    bool const file_exists = std::filesystem::exists(data_filename);
+    if (!file_exists)
+    {
+      Dout(dc::notice, "Creating directory " << data_directory);
+      std::filesystem::create_directories(data_directory);
+    }
 
-    int total_positions;
-    int draw_positions = 0;
-    int black_in_check_positions = 0;
-    int mate_positions = 0;
-    int stalemate_positions = 0;
-
-    // Generate all possible positions.
-    graph.classify();
-
+    // Only a new file is zero initialized.
+    Graph graph(prefix_directory, file_exists);
     std::vector<Board> already_mate;
 
-    // Black to move positions.
+    if (!file_exists)
     {
-      auto const& black_to_move_partition = graph.black_to_move_partition();
-      total_positions = 0;
-      for (Partition current_partition = black_to_move_partition.ibegin();
-          current_partition != black_to_move_partition.iend(); ++current_partition)
-      {
-        for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
-            current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
-        {
-          Info const& info = graph.get_info<black>(current_partition, current_partition_element);
-          Classification const& pc = info.classification();
-          if (!pc.is_legal())
-            continue;
-          ++total_positions;
-          if (pc.is_draw())
-            ++draw_positions;
-          if (pc.is_check())
-            ++black_in_check_positions;
-          if (pc.is_mate())
-          {
-            ++mate_positions;
-            already_mate.emplace_back(current_partition, current_partition_element);
-          }
-          if (pc.is_stalemate())
-            ++stalemate_positions;
-        }
-      }
-    }
-    // White to move positions.
-    {
-      auto const& white_to_move_partition = graph.white_to_move_partition();
-      for (Graph::partitions_type::index_type current_partition = white_to_move_partition.ibegin();
-          current_partition != white_to_move_partition.iend(); ++current_partition)
-      {
-        for (Graph::partitions_type::value_type::index_type current_partition_element = white_to_move_partition[current_partition].ibegin();
-            current_partition_element != white_to_move_partition[current_partition].iend(); ++current_partition_element)
-        {
-          Info const& info = graph.get_info<white>(current_partition, current_partition_element);
-          Classification const& pc = info.classification();
-          if (!pc.is_legal())
-            continue;
-          ++total_positions;
-          if (pc.is_draw())
-            ++draw_positions;
-        }
-      }
-    }
+      int total_positions;
+      int draw_positions = 0;
+      int black_in_check_positions = 0;
+      int mate_positions = 0;
+      int stalemate_positions = 0;
 
-    std::cout << "Version 2:" << std::endl;
-    std::cout << "Total legal positions: " << total_positions << std::endl;
-    std::cout << "Draw positions: " << draw_positions << std::endl;
-    std::cout << "Black in check positions: " << black_in_check_positions << std::endl;
-    std::cout << "Mate positions: " << mate_positions << std::endl;
-    std::cout << "Stalemate positions: " << stalemate_positions << std::endl;
+      // Generate all possible positions.
+      graph.classify();
+
+      Dout(dc::notice, "Number of partitions: white: " << graph.white_to_move_partition().size() <<
+          ", black: " << graph.black_to_move_partition().size());
+
+      // Black to move positions.
+      Dout(dc::notice, "Processing Black-To-Move-Partitions...");
+      {
+        auto const& black_to_move_partition = graph.black_to_move_partition();
+        total_positions = 0;
+        for (Partition current_partition = black_to_move_partition.ibegin();
+            current_partition != black_to_move_partition.iend(); ++current_partition)
+        {
+          Dout(dc::notice, "  partition " << static_cast<PartitionIndex>(current_partition));
+          for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
+              current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
+          {
+            Info const& info = graph.get_info<black>(current_partition, current_partition_element);
+            Classification const& pc = info.classification();
+            if (!pc.is_legal())
+              continue;
+            ++total_positions;
+            if (pc.is_draw())
+              ++draw_positions;
+            if (pc.is_check())
+              ++black_in_check_positions;
+            if (pc.is_mate())
+            {
+              ++mate_positions;
+              already_mate.emplace_back(current_partition, current_partition_element);
+            }
+            if (pc.is_stalemate())
+              ++stalemate_positions;
+          }
+        }
+      }
+      // White to move positions.
+      Dout(dc::notice, "Processing White-To-Move-Partitions...");
+      {
+        auto const& white_to_move_partition = graph.white_to_move_partition();
+        for (Graph::partitions_type::index_type current_partition = white_to_move_partition.ibegin();
+            current_partition != white_to_move_partition.iend(); ++current_partition)
+        {
+          Dout(dc::notice, "  partition " << current_partition);
+          for (Graph::partitions_type::value_type::index_type current_partition_element = white_to_move_partition[current_partition].ibegin();
+              current_partition_element != white_to_move_partition[current_partition].iend(); ++current_partition_element)
+          {
+            Info const& info = graph.get_info<white>(current_partition, current_partition_element);
+            Classification const& pc = info.classification();
+            if (!pc.is_legal())
+              continue;
+            ++total_positions;
+            if (pc.is_draw())
+              ++draw_positions;
+          }
+        }
+      }
+
+      std::cout << "Version 2:" << std::endl;
+      std::cout << "Total legal positions: " << total_positions << std::endl;
+      std::cout << "Draw positions: " << draw_positions << std::endl;
+      std::cout << "Black in check positions: " << black_in_check_positions << std::endl;
+      std::cout << "Mate positions: " << mate_positions << std::endl;
+      std::cout << "Stalemate positions: " << stalemate_positions << std::endl;
+    }
+    else
+    {
+      // Generate all positions that are already mate.
+      for (int x = 0; x < Size::board_size_x; ++x)
+      {
+        for (int wx = 0; wx < Size::board_size_x; ++wx)
+        {
+          if (std::abs(wx - x) > 1)
+          {
+            already_mate.emplace_back(BlackKingSquare{x, 0}, WhiteKingSquare{x, 2}, WhiteRookSquare{wx, 0});
+            if (x == 0)
+              already_mate.emplace_back(BlackKingSquare{x, 0}, WhiteKingSquare{1, 2}, WhiteRookSquare{wx, 0});
+          }
+        }
+      }
+      for (int y = 0; y < Size::board_size_y; ++y)
+      {
+        for (int wy = 0; wy < Size::board_size_y; ++wy)
+        {
+          if (std::abs(wy - y) > 1)
+          {
+            already_mate.emplace_back(BlackKingSquare{0, y}, WhiteKingSquare{2, y}, WhiteRookSquare{0, wy});
+            if (y == 0)
+              already_mate.emplace_back(BlackKingSquare{0, y}, WhiteKingSquare{2, 1}, WhiteRookSquare{0, wy});
+          }
+        }
+      }
+      Dout(dc::notice, "Number of mate positions: " << already_mate.size());
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -134,11 +169,12 @@ int main()
     // Run over all positions that are already mate (as per the classification)
     // and mark all position that can reach those as mate in 1 ply.
     std::vector<Board> white_to_move_parents;
+    Dout(dc::notice, "Setting ply to 0 for " << already_mate.size() << " positions.");
     for (Board current_board : already_mate)
     {
+//      current_board.debug_utf8art(DEBUGCHANNELS::dc::notice);
       Info& black_to_move_info = graph.get_info<black>(current_board);
       black_to_move_info.classification().set_mate_in_ply(0);
-      //current_board.debug_utf8art(DEBUGCHANNELS::dc::notice);
       black_to_move_info.black_to_move_set_maximum_ply_on_parents(current_board, graph, white_to_move_parents);
     }
 
@@ -153,6 +189,7 @@ int main()
         std::vector<Board> black_to_move_parents;
         // Run over all positions that are mate in an odd number of ply.
         {
+          Dout(dc::notice, "Setting ply to " << ply << " for up to " << white_to_move_parents.size() << " positions.");
           for (Board white_to_move_board : white_to_move_parents)
           {
             Info& white_to_move_info = graph.get_info<white>(white_to_move_board);
@@ -176,6 +213,7 @@ int main()
         white_to_move_parents.clear();
         // Run over all positions that are mate in an even number of ply.
         {
+          Dout(dc::notice, "Setting ply to " << ply << " for up to " << black_to_move_parents.size() << " positions.");
           for (Board black_to_move_board : black_to_move_parents)
           {
             Info& black_to_move_info = graph.get_info<black>(black_to_move_board);
@@ -206,7 +244,7 @@ int main()
     file.close();
 #endif
 
-    Graph const g(data_dir, false);
+    Graph const g(prefix_directory, false);
 
 #if CW_DEBUG
 #if 0

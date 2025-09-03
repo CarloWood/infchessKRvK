@@ -106,9 +106,10 @@ void Graph::read_from(std::istream& is)
             }
 }
 
-std::filesystem::path Graph::partition_filename(Partition partition) const
+//static
+std::filesystem::path Graph::data_directory(std::filesystem::path const& prefix_directory)
 {
-  BlockIndex bkbi = partition.black_king_block_index();
-  BlockIndex wkbi = partition.white_king_block_index();
-  return partition_directory_ / std::format("info_b{}_w{}", static_cast<uint32_t>(bkbi.index()), static_cast<uint32_t>(wkbi.index()));
+  return prefix_directory /
+         std::format("board{}x{}", Size::board_size_x, Size::board_size_y) /
+         std::format("partition{}x{}", Size::Px, Size::Py);
 }

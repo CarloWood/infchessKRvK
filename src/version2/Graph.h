@@ -10,9 +10,6 @@
 #include "utils/square.h"
 #include <filesystem>
 
-// Allow using `new (pool) Foo`.
-inline void* operator new(std::size_t size, memory::MemoryMappedPool& pool) { return pool.allocate(); }
-
 class Graph
 {
  public:
@@ -20,8 +17,9 @@ class Graph
   using partitions_type = utils::Array<Info::nodes_type, number_of_partitions, PartitionIndex>;
 
  private:
-  std::filesystem::path partition_directory_;
+  std::filesystem::path data_directory_;
   memory::MemoryMappedPool partitions_pool_;
+  bool reuse_file_;
   std::unique_ptr<partitions_type, std::function<void(partitions_type*)>> black_to_move_;
   std::unique_ptr<partitions_type, std::function<void(partitions_type*)>> white_to_move_;
 
@@ -31,16 +29,30 @@ class Graph
     return utils::nearest_multiple_of_power_of_two(sizeof(partitions_type), memory_page_size);
   }
 
+  void* black_to_move_partitions_start()
+  {
+    if (reuse_file_)
+      return partitions_pool_.mapped_base();
+    else
+      return partitions_pool_.allocate();
+  }
+
+  void* white_to_move_partitions_start()
+  {
+    if (reuse_file_)
+      return static_cast<char*>(partitions_pool_.mapped_base()) + partitions_size();
+    else
+      return partitions_pool_.allocate();
+  }
+
  public:
-  Graph(std::filesystem::path directory, bool zero_init) :
-    partition_directory_(
-      directory /
-      std::format("board{}x{}", Size::board_size_x, Size::board_size_y) /
-      std::format("partition{}x{}", Size::Px, Size::Py)),
-    partitions_pool_(partition_directory_ / "mmap.img", partitions_size(), 2 * partitions_size(),
-        memory::MemoryMappedPool::Mode::persistent, zero_init),
-    black_to_move_(new (partitions_pool_) partitions_type, [this](partitions_type* ptr){ partitions_pool_.deallocate(ptr); }),
-    white_to_move_(new (partitions_pool_) partitions_type, [this](partitions_type* ptr){ partitions_pool_.deallocate(ptr); })
+  Graph(std::filesystem::path prefix_directory, bool reuse_file) :
+    data_directory_(data_directory(prefix_directory)),
+    partitions_pool_(data_filename(prefix_directory), partitions_size(), 2 * partitions_size(),
+        memory::MemoryMappedPool::Mode::persistent, !reuse_file),
+    reuse_file_(reuse_file),
+    black_to_move_(new (black_to_move_partitions_start()) partitions_type, [this](partitions_type* ptr){ }),
+    white_to_move_(new (white_to_move_partitions_start()) partitions_type, [this](partitions_type* ptr){ })
     { }
 
   void initialize()
@@ -97,5 +109,9 @@ class Graph
   void write_to(std::ostream& os) const;
   void read_from(std::istream& is);
 
-  std::filesystem::path partition_filename(Partition partition) const;
+  static std::filesystem::path data_directory(std::filesystem::path const& prefix_directory);
+  static std::filesystem::path data_filename(std::filesystem::path const& prefix_directory)
+  {
+    return Graph::data_directory(prefix_directory) / "mmap.img";
+  }
 };
