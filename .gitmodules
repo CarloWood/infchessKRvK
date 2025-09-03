@@ -14,3 +14,9 @@
 	path = memory
 	url = https://github.com/CarloWood/memory.git
 	branch = master
+[submodule "threadpool"]
+	path = threadpool
+	url = https://github.com/CarloWood/threadpool.git
+[submodule "threadsafe"]
+	path = threadsafe
+	url = https://github.com/CarloWood/threadsafe.git

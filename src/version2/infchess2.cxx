@@ -178,6 +178,9 @@ int main()
       black_to_move_info.black_to_move_set_maximum_ply_on_parents(current_board, graph, white_to_move_parents);
     }
 
+    // Measure the time it takes to generate the graph.
+    start = std::chrono::high_resolution_clock::now();
+
     Board initial_position;
     Color initial_to_move;
     {
@@ -233,6 +236,10 @@ int main()
       }
       Dout(dc::notice, "max ply = " << ply);
     }
+
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Execution time: " << (duration.count() / 1000000.0) << " seconds\n";
 
 #if 0
     std::filesystem::path filename = data_dir / std::format("info{}x{}-{}x{}.txt", Size::Bx, Size::By, Size::Px, Size::Py);
