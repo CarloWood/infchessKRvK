@@ -45,6 +45,12 @@ class Info
     number_of_visited_children_ = 0;
   }
 
+  void reset_ply()
+  {
+    classification_.reset_ply();
+    number_of_visited_children_ = 0;
+  }
+
   // Accessors.
   Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }

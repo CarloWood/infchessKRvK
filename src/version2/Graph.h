@@ -66,6 +66,17 @@ class Graph
         info.initialize();
   }
 
+  void reset_ply()
+  {
+    // This sets everything to zero.
+    for (Info::nodes_type& nodes : *black_to_move_)
+      for (Info& info : nodes)
+        info.reset_ply();
+    for (Info::nodes_type& nodes : *white_to_move_)
+      for (Info& info : nodes)
+        info.reset_ply();
+  }
+
   void classify();
 
   template<color_type to_move>

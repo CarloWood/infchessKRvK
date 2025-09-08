@@ -63,6 +63,12 @@ class Classification
     encoded_ = 0;       // Not mate, stalemate, draw, check or legal(!) - and mate_in_ply is unknown.
   }
 
+  // Call this if the underlying memory was already initialized, but we want to calculate the number of ply again (for testing).
+  void reset_ply()
+  {
+    encoded_ &= bits_mask;
+  }
+
   void determine(Board const& board, Color to_move);
 
  private:

@@ -29,7 +29,7 @@ int main()
     // Construct the initial graph with all positions that are already mate.
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::filesystem::path const prefix_directory = "/opt/verylarge/chessgames/infchessKRvK";
+    std::filesystem::path const prefix_directory = "/opt/btrfs/infchessKRvK";
     std::filesystem::path const data_directory = Graph::data_directory(prefix_directory);
     std::filesystem::path const data_filename = Graph::data_filename(prefix_directory);
     bool const file_exists = std::filesystem::exists(data_filename);
@@ -38,6 +38,8 @@ int main()
       Dout(dc::notice, "Creating directory " << data_directory);
       std::filesystem::create_directories(data_directory);
     }
+    else
+      Dout(dc::notice, "Using existing file " << data_filename << ".");
 
     // Only a new file is zero initialized.
     Graph graph(prefix_directory, file_exists);
@@ -151,6 +153,15 @@ int main()
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Execution time: " << (duration.count() / 1000000.0) << " seconds\n";
 
+    if (file_exists)
+    {
+      Dout(dc::notice|continued_cf|flush_cf, "Resetting ply to unknown...");
+      // Reset all ply to zero so we can test the code below.
+      //FIXME: remove this.
+      graph.reset_ply();
+      Dout(dc::finish, " done");
+    }
+
 #if 0
     {
       Board board({3, 0}, {1, 1}, {1, 0});
@@ -169,7 +180,7 @@ int main()
     // Run over all positions that are already mate (as per the classification)
     // and mark all position that can reach those as mate in 1 ply.
     std::vector<Board> white_to_move_parents;
-    Dout(dc::notice, "Setting ply to 0 for " << already_mate.size() << " positions.");
+    std::cout << "Setting ply to 0 for " << already_mate.size() << " positions." << std::endl;
     for (Board current_board : already_mate)
     {
 //      current_board.debug_utf8art(DEBUGCHANNELS::dc::notice);
@@ -192,7 +203,7 @@ int main()
         std::vector<Board> black_to_move_parents;
         // Run over all positions that are mate in an odd number of ply.
         {
-          Dout(dc::notice, "Setting ply to " << ply << " for up to " << white_to_move_parents.size() << " positions.");
+          std::cout << "Setting ply to " << ply << " for up to " << white_to_move_parents.size() << " positions." << std::endl;
           for (Board white_to_move_board : white_to_move_parents)
           {
             Info& white_to_move_info = graph.get_info<white>(white_to_move_board);
@@ -216,7 +227,7 @@ int main()
         white_to_move_parents.clear();
         // Run over all positions that are mate in an even number of ply.
         {
-          Dout(dc::notice, "Setting ply to " << ply << " for up to " << black_to_move_parents.size() << " positions.");
+          std::cout << "Setting ply to " << ply << " for up to " << black_to_move_parents.size() << " positions." << std::endl;
           for (Board black_to_move_board : black_to_move_parents)
           {
             Info& black_to_move_info = graph.get_info<black>(black_to_move_board);
@@ -234,7 +245,7 @@ int main()
           initial_to_move = white;
         }
       }
-      Dout(dc::notice, "max ply = " << ply);
+      std::cout << "max ply = " << ply << std::endl;
     }
 
     end = std::chrono::high_resolution_clock::now();
