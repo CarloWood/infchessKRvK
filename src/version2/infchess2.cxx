@@ -35,8 +35,15 @@ int main()
     bool const file_exists = std::filesystem::exists(data_filename);
     if (!file_exists)
     {
-      Dout(dc::notice, "Creating directory " << data_directory);
-      std::filesystem::create_directories(data_directory);
+      std::filesystem::path const directory_path = data_filename.parent_path();
+      bool const dir_exists = std::filesystem::exists(directory_path);
+      if (!dir_exists)
+      {
+        Dout(dc::notice, "File does not exist; creating directory " << data_directory);
+        std::filesystem::create_directories(data_directory);
+      }
+      else
+        Dout(dc::notice, "File does not exist.");
     }
     else
       Dout(dc::notice, "Using existing file " << data_filename << ".");

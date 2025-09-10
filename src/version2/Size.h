@@ -131,8 +131,8 @@ struct Size
 {
  public:
 #if 1
-  static constexpr unsigned int Bx = 8;         // Width in squares of one "king block".
-  static constexpr unsigned int By = 8;         // Height in square of one "king block".
+  static constexpr unsigned int Bx = 4;         // Width in squares of one "king block".
+  static constexpr unsigned int By = 4;         // Height in square of one "king block".
   static constexpr unsigned int Px = 4;
   static constexpr unsigned int Py = 4;
 #else
