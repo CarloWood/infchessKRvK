@@ -34,6 +34,7 @@ int main()
     auto start = std::chrono::high_resolution_clock::now();
 
     std::filesystem::path const prefix_directory = "/opt/btrfs/infchessKRvK";
+    std::filesystem::path const prefix_directory_bak = "/opt/ext4/infchessKRvK";
     std::filesystem::path const data_directory = Graph::data_directory(prefix_directory);
     std::filesystem::path const data_filename = Graph::data_filename(prefix_directory);
     bool const file_exists = std::filesystem::exists(data_filename);
@@ -67,20 +68,20 @@ int main()
       // Generate all possible positions.
       graph.classify();
 
-      Dout(dc::notice, "Number of partitions: white: " << graph.white_to_move_partition().size() <<
-          ", black: " << graph.black_to_move_partition().size());
+      Dout(dc::notice, "Number of partitions: white: " << graph.white_to_move_infos().size() <<
+          ", black: " << graph.black_to_move_infos().size());
 
       // Black to move positions.
       Dout(dc::notice, "Processing Black-To-Move-Partitions...");
       {
-        auto const& black_to_move_partition = graph.black_to_move_partition();
+        auto const& black_to_move_infos = graph.black_to_move_infos();
         total_positions = 0;
-        for (Partition current_partition = black_to_move_partition.ibegin();
-            current_partition != black_to_move_partition.iend(); ++current_partition)
+        for (Partition current_partition = black_to_move_infos.ibegin();
+            current_partition != black_to_move_infos.iend(); ++current_partition)
         {
           Dout(dc::notice, "  partition " << static_cast<PartitionIndex>(current_partition));
-          for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
-              current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
+          for (PartitionElement current_partition_element = black_to_move_infos[current_partition].ibegin();
+              current_partition_element != black_to_move_infos[current_partition].iend(); ++current_partition_element)
           {
             Info const& info = graph.get_info<black>(current_partition, current_partition_element);
             Classification const& pc = info.classification();
@@ -104,13 +105,13 @@ int main()
       // White to move positions.
       Dout(dc::notice, "Processing White-To-Move-Partitions...");
       {
-        auto const& white_to_move_partition = graph.white_to_move_partition();
-        for (Graph::partitions_type::index_type current_partition = white_to_move_partition.ibegin();
-            current_partition != white_to_move_partition.iend(); ++current_partition)
+        auto const& white_to_move_infos = graph.white_to_move_infos();
+        for (Graph::infos_type::index_type current_partition = white_to_move_infos.ibegin();
+            current_partition != white_to_move_infos.iend(); ++current_partition)
         {
           Dout(dc::notice, "  partition " << current_partition);
-          for (Graph::partitions_type::value_type::index_type current_partition_element = white_to_move_partition[current_partition].ibegin();
-              current_partition_element != white_to_move_partition[current_partition].iend(); ++current_partition_element)
+          for (Graph::infos_type::value_type::index_type current_partition_element = white_to_move_infos[current_partition].ibegin();
+              current_partition_element != white_to_move_infos[current_partition].iend(); ++current_partition_element)
           {
             Info const& info = graph.get_info<white>(current_partition, current_partition_element);
             Classification const& pc = info.classification();
@@ -263,16 +264,16 @@ int main()
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Execution time: " << (duration.count() / 1000000.0) << " seconds\n";
 
-    Graph const g(prefix_directory, true);
+    Graph const g(prefix_directory_bak, true);
 
 #if CW_DEBUG
     std::cout << "Testing contents for black to move..." << std::endl;
-    auto const& black_to_move_partition = graph.black_to_move_partition();
-    for (Partition current_partition = black_to_move_partition.ibegin();
-        current_partition != black_to_move_partition.iend(); ++current_partition)
+    auto const& black_to_move_infos = graph.black_to_move_infos();
+    for (Partition current_partition = black_to_move_infos.ibegin();
+        current_partition != black_to_move_infos.iend(); ++current_partition)
     {
-      for (PartitionElement current_partition_element = black_to_move_partition[current_partition].ibegin();
-          current_partition_element != black_to_move_partition[current_partition].iend(); ++current_partition_element)
+      for (PartitionElement current_partition_element = black_to_move_infos[current_partition].ibegin();
+          current_partition_element != black_to_move_infos[current_partition].iend(); ++current_partition_element)
       {
         Info const& info1 = graph.get_info<black>(current_partition, current_partition_element);
         Info const& info2 = g.get_info<black>(current_partition, current_partition_element);
@@ -288,12 +289,12 @@ int main()
       }
     }
     std::cout << "Testing contents for white to move..." << std::endl;
-    auto const& white_to_move_partition = graph.white_to_move_partition();
-    for (Partition current_partition = white_to_move_partition.ibegin();
-        current_partition != white_to_move_partition.iend(); ++current_partition)
+    auto const& white_to_move_infos = graph.white_to_move_infos();
+    for (Partition current_partition = white_to_move_infos.ibegin();
+        current_partition != white_to_move_infos.iend(); ++current_partition)
     {
-      for (PartitionElement current_partition_element = white_to_move_partition[current_partition].ibegin();
-          current_partition_element != white_to_move_partition[current_partition].iend(); ++current_partition_element)
+      for (PartitionElement current_partition_element = white_to_move_infos[current_partition].ibegin();
+          current_partition_element != white_to_move_infos[current_partition].iend(); ++current_partition_element)
       {
         Info const& info1 = graph.get_info<white>(current_partition, current_partition_element);
         Info const& info2 = g.get_info<white>(current_partition, current_partition_element);

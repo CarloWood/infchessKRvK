@@ -27,9 +27,8 @@ class Info
 
  private:
   Classification classification_;               // The classification of this position.
-  // The following are only valid if this position is legal.
+  // The following is only valid if this position is legal, otherwise it is set to zero.
   degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
-  std::atomic<degree_type> number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
 
  public:
   // Do nothing if this is the default constructor;
@@ -42,20 +41,17 @@ class Info
     // This set everything to zero.
     classification_.initialize();
     number_of_children_ = 0;
-    number_of_visited_children_ = 0;
   }
 
   void reset_ply()
   {
     classification_.reset_ply();
-    number_of_visited_children_ = 0;
   }
 
   // Accessors.
   Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }
   degree_type number_of_children() const { return number_of_children_; }
-  degree_type number_of_visited_children() const { return number_of_visited_children_.load(std::memory_order_relaxed); }
 
   // Given that black is to move, set the mate_in_ply_ value on each of the parent positions.
   void black_to_move_set_maximum_ply_on_parents(Board const current_board, Graph& graph, std::vector<Board>& parents_out);
@@ -68,14 +64,43 @@ class Info
     number_of_children_ = number_of_children;
   }
 
+ public:
+#ifdef CWDEBUG
+  void print_on(std::ostream& os) const;
+#endif
+};
+
+// Data that one-on-one matches an Info, but is not memory-mapped.
+class NonMappedInfo
+{
+ public:
+  // The vector type used to store all NonMappedInfo objects (members of Graph).
+  using nodes_type = utils::Array<NonMappedInfo, PartitionElement::number_of_elements, InfoIndex>;
+
+ private:
+  std::atomic<Info::degree_type> number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
+
+ public:
+  void initialize()
+  {
+    number_of_visited_children_ = 0;
+  }
+
+  void reset_ply()
+  {
+    number_of_visited_children_ = 0;
+  }
+
+  Info::degree_type number_of_visited_children() const { return number_of_visited_children_.load(std::memory_order_relaxed); }
+
   // Returns true if this was the last child.
-  bool increment_processed_children()
+  bool increment_processed_children(Info::degree_type number_of_children)
   {
     // Call set_number_of_children first.
-    ASSERT(number_of_children_ > 0);
+    ASSERT(number_of_children > 0);
     // This should be called exactly once for each child position.
-    ASSERT(number_of_visited_children() < number_of_children_);
-    return number_of_visited_children_.fetch_add(1, std::memory_order_relaxed) == number_of_children_ - 1;
+    ASSERT(number_of_visited_children() < number_of_children);
+    return number_of_visited_children_.fetch_add(1, std::memory_order_relaxed) + 1 == number_of_children;
   }
 
  public:

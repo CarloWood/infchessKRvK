@@ -24,7 +24,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
-    Info& parent_info = graph.get_info<white>(parent);
+    Info const& parent_info = graph.get_info<white>(parent);
     if (!parent_info.classification().is_legal())
     {
       oops = true;
@@ -39,7 +39,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
     for (int i = 0; i < number_of_parents; ++i)
     {
       Board const& parent = parents[i];
-      Info& parent_info = graph.get_info<white>(parent);
+      Info const& parent_info = graph.get_info<white>(parent);
       if (!parent_info.classification().is_legal())
         std::cout << "ILLEGAL Parent " << i << ":\n";
       else
@@ -93,7 +93,7 @@ void Info::white_to_move_set_minimum_ply_on_parents(
   {
     Board const& parent = parents[i];
     Dout(dc::notice, "  parent " << i << " = " << parent);
-    Info& parent_info = graph.get_info<black>(parent);
+    auto [parent_info, parent_non_mapped_info] = graph.get_info_tuple<black>(parent);
     Dout(dc::notice, "    with info: " << parent_info);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
@@ -108,7 +108,7 @@ void Info::white_to_move_set_minimum_ply_on_parents(
 
     // Inform parent that another child has its mate_in_ply_ set.
     // Append the parent to parents_out if the parent is now known to be mate in `min_ply` moves because this was its last child.
-    if (parent_info.increment_processed_children())     // Was this the last child?
+    if (parent_non_mapped_info.increment_processed_children(parent_info.number_of_children()))  // Was this the last child?
     {
       parent_info.classification().set_mate_in_ply(min_ply);
       parents_out.push_back(parent);
@@ -121,8 +121,14 @@ void Info::print_on(std::ostream& os) const
 {
   os << '{';
   os << "classification:" << classification_ <<
-      ", number_of_children:" << static_cast<uint32_t>(number_of_children_) <<
-      ", number_of_visited_children:" << static_cast<uint32_t>(number_of_visited_children_);
+      ", number_of_children:" << static_cast<uint32_t>(number_of_children_);
+  os << '}';
+}
+
+void NonMappedInfo::print_on(std::ostream& os) const
+{
+  os << '{';
+  os << "number_of_visited_children:" << static_cast<uint32_t>(number_of_visited_children_);
   os << '}';
 }
 #endif
