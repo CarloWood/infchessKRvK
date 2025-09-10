@@ -42,21 +42,6 @@ void Classification::determine(Board const& board, Color to_move)
   set_legal();
 }
 
-void Classification::write_to(std::ostream& os) const
-{
-  encoded_type encoded_be = utils::hton(encoded_);
-  char const* char_ptr = reinterpret_cast<char const*>(&encoded_be);
-  os.write(char_ptr, sizeof(encoded_be));
-}
-
-void Classification::read_from(std::istream& is)
-{
-  encoded_type encoded_be;
-  char* char_ptr = reinterpret_cast<char*>(&encoded_be);
-  is.read(char_ptr, sizeof(encoded_be));
-  encoded_ = utils::ntoh(encoded_be);
-}
-
 #ifdef CWDEBUG
 //static
 std::string Classification::state_str(encoded_type state)

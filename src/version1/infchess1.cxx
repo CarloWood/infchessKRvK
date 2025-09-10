@@ -9,6 +9,7 @@
 #include <variant>
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include "debug.h"
 
 constexpr int relative_position_index_end = 20;

@@ -3,7 +3,11 @@
 #include "../parse_move.h"
 #include "utils/AIAlert.h"
 #include "utils/debug_ostream_operators.h"
+#include "utils/threading/Gate.h"
+#include "utils/itoa.h"
+#include "threadpool/AIThreadPool.h"
 #include <bitset>
+#include <set>
 #include "debug.h"
 
 int main()
@@ -259,28 +263,9 @@ int main()
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Execution time: " << (duration.count() / 1000000.0) << " seconds\n";
 
-#if 0
-    std::filesystem::path filename = data_dir / std::format("info{}x{}-{}x{}.txt", Size::Bx, Size::By, Size::Px, Size::Py);
-    std::cout << "Writing " << filename << "..." << std::endl;
-    std::fstream file(filename, std::ios::out | std::ios::binary | std::ios::trunc);
-    if (!file)
-      DoutFatal(dc::core, "Failed to open " << filename << " for writing!");
-    graph.write_to(file);
-    file.close();
-#endif
-
     Graph const g(prefix_directory, true);
 
 #if CW_DEBUG
-#if 0
-    std::cout << "Reading " << filename << "..." << std::endl;
-    file.open(filename, std::ios::in | std::ios::binary);
-    if (!file)
-      DoutFatal(dc::core, "Failed to open " << filename << " for reading!");
-    g.read_from(file);
-    file.close();
-#endif
-
     std::cout << "Testing contents for black to move..." << std::endl;
     auto const& black_to_move_partition = graph.black_to_move_partition();
     for (Partition current_partition = black_to_move_partition.ibegin();
@@ -291,7 +276,7 @@ int main()
       {
         Info const& info1 = graph.get_info<black>(current_partition, current_partition_element);
         Info const& info2 = g.get_info<black>(current_partition, current_partition_element);
-        ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
+        ASSERT(info1.classification() == info2.classification());
 
 #if 0
         Dout(dc::notice, "Board for partition " << static_cast<PartitionIndex>(current_partition) <<
@@ -312,7 +297,7 @@ int main()
       {
         Info const& info1 = graph.get_info<white>(current_partition, current_partition_element);
         Info const& info2 = g.get_info<white>(current_partition, current_partition_element);
-        ASSERT(info1.classification().ply() == info2.classification().ply() && info1.classification() == info2.classification());
+        ASSERT(info1.classification() == info2.classification());
 
 #if 0
         Dout(dc::notice, "Board for partition " << static_cast<PartitionIndex>(current_partition) <<

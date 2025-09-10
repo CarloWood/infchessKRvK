@@ -117,9 +117,6 @@ class Graph
     return *white_to_move_;
   }
 
-  void write_to(std::ostream& os) const;
-  void read_from(std::istream& is);
-
   static std::filesystem::path data_directory(std::filesystem::path const& prefix_directory);
   static std::filesystem::path data_filename(std::filesystem::path const& prefix_directory)
   {

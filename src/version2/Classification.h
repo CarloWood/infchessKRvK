@@ -6,6 +6,7 @@
 #include "utils/has_print_on.h"
 #include <cstdint>
 #include <string>
+#include <atomic>
 #include "debug.h"
 
 #ifdef CWDEBUG
@@ -35,7 +36,9 @@ class Classification
   using encoded_type = uint_type<encoded_bits>;
 
   static constexpr int mate_in_ply_shift = number_of_bits;
-  static constexpr encoded_type mate_in_ply_mask = create_mask<encoded_type, ply_bits>() << mate_in_ply_shift;
+  static constexpr encoded_type max_encoded_ply = create_mask<encoded_type, ply_bits>();
+  static constexpr encoded_type mate_in_ply_mask = max_encoded_ply << mate_in_ply_shift;
+
 
   using ply_type = uint_type<ply_bits>;
   static constexpr ply_type encoded_unknown_ply = 0;
@@ -93,8 +96,6 @@ class Classification
   // Set in how many ply this position is mate.
   void set_mate_in_ply(ply_type ply)
   {
-    // Only call this function with an argument that makes sense.
-    ASSERT(ply < std::numeric_limits<ply_type>::max());
     // If it is a draw, then it isn't mate in `ply` moves; so why is this function being called?
     ASSERT(!is_draw());
     // If it mate then `ply` must be zero.
@@ -113,14 +114,13 @@ class Classification
   // Subtract 1 again to undo the +1 in set_mate_in_ply.
   int ply() const { return (encoded_ >> mate_in_ply_shift) - 1; }
 
-  // Serialization.
-  void write_to(std::ostream& os) const;
-  void read_from(std::istream& is);
-
-  friend bool operator==(Classification lhs, Classification rhs)
+#if CW_DEBUG
+  // This is only used in single threaded code (for debugging purposes).
+  friend bool operator==(Classification const& lhs, Classification const& rhs)
   {
     return lhs.encoded_ == rhs.encoded_;
   }
+#endif
 
 #ifdef CWDEBUG
   static std::string state_str(encoded_type state);

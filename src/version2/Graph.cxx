@@ -3,6 +3,7 @@
 #include "Board.h"
 #include "debug.h"
 #include <algorithm>
+#include <format>
 
 void Graph::classify()
 {
@@ -52,58 +53,6 @@ void Graph::classify()
       }
     }
   }
-}
-
-void Graph::write_to(std::ostream& os) const
-{
-  for (int bky = 0; bky < Size::board::y; ++bky)
-    for (int bkx = 0; bkx < Size::board::x; ++bkx)
-      for (int wky = 0; wky < Size::board::y; ++wky)
-        for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < Size::board::y; ++wry)
-            for (int wrx = 0; wrx < Size::board::x; ++wrx)
-            {
-              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-              Info const& info = get_info<black>(board);
-              info.classification().write_to(os);
-            }
-  for (int bky = 0; bky < Size::board::y; ++bky)
-    for (int bkx = 0; bkx < Size::board::x; ++bkx)
-      for (int wky = 0; wky < Size::board::y; ++wky)
-        for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < Size::board::y; ++wry)
-            for (int wrx = 0; wrx < Size::board::x; ++wrx)
-            {
-              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-              Info const& info = get_info<white>(board);
-              info.classification().write_to(os);
-            }
-}
-
-void Graph::read_from(std::istream& is)
-{
-  for (int bky = 0; bky < Size::board::y; ++bky)
-    for (int bkx = 0; bkx < Size::board::x; ++bkx)
-      for (int wky = 0; wky < Size::board::y; ++wky)
-        for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < Size::board::y; ++wry)
-            for (int wrx = 0; wrx < Size::board::x; ++wrx)
-            {
-              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-              Info& info = get_info<black>(board);
-              info.classification().read_from(is);
-            }
-  for (int bky = 0; bky < Size::board::y; ++bky)
-    for (int bkx = 0; bkx < Size::board::x; ++bkx)
-      for (int wky = 0; wky < Size::board::y; ++wky)
-        for (int wkx = 0; wkx < Size::board::x; ++wkx)
-          for (int wry = 0; wry < Size::board::y; ++wry)
-            for (int wrx = 0; wrx < Size::board::x; ++wrx)
-            {
-              Board board({bkx, bky}, {wkx, wky}, {wrx, wry});
-              Info& info = get_info<white>(board);
-              info.classification().read_from(is);
-            }
 }
 
 //static
