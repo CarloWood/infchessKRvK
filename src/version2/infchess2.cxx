@@ -17,7 +17,7 @@ int main()
   constexpr int max_number_of_tasks = 200;
   constexpr int min_number_of_parents_per_task = 100;
 
-  AIThreadPool thread_pool(1);
+  AIThreadPool thread_pool(2);
   AIQueueHandle queue_handle = thread_pool.new_queue(max_number_of_tasks + 1);
 
   Dout(dc::notice, "sizeof(Info) = " << sizeof(Info));
