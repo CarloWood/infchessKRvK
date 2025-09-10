@@ -52,10 +52,10 @@ class Graph
   }
 
  public:
-  Graph(std::filesystem::path prefix_directory, bool reuse_file) :
+  Graph(std::filesystem::path prefix_directory, bool reuse_file, bool read_only = false) :
     data_directory_(data_directory(prefix_directory)),
     partitions_pool_(data_filename(prefix_directory), infos_size(), 2 * infos_size(),
-        memory::MemoryMappedPool::Mode::persistent, !reuse_file),
+        read_only ? memory::MemoryMappedPool::Mode::copy_on_write : memory::MemoryMappedPool::Mode::persistent, !reuse_file),
     reuse_file_(reuse_file),
     black_to_move_infos_(new (black_to_move_infos_start()) infos_type, [this](infos_type* ptr){ }),
     black_to_move_non_mapped_infos_(std::make_unique<non_mapped_infos_type>()),

@@ -14,6 +14,12 @@ int main()
 {
   Debug(NAMESPACE_DEBUG::init());
 
+  constexpr int max_number_of_tasks = 200;
+  constexpr int min_number_of_parents_per_task = 100;
+
+  AIThreadPool thread_pool(1);
+  AIQueueHandle queue_handle = thread_pool.new_queue(max_number_of_tasks + 1);
+
   Dout(dc::notice, "sizeof(Info) = " << sizeof(Info));
 
   // Get the size of the board.
@@ -33,8 +39,8 @@ int main()
     // Construct the initial graph with all positions that are already mate.
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::filesystem::path const prefix_directory = "/opt/btrfs/infchessKRvK";
     std::filesystem::path const prefix_directory_bak = "/opt/ext4/infchessKRvK";
+    std::filesystem::path const prefix_directory = "/opt/btrfs/infchessKRvK";
     std::filesystem::path const data_directory = Graph::data_directory(prefix_directory);
     std::filesystem::path const data_filename = Graph::data_filename(prefix_directory);
     bool const file_exists = std::filesystem::exists(data_filename);
@@ -215,16 +221,89 @@ int main()
         std::vector<Board> black_to_move_parents;
         // Run over all positions that are mate in an odd number of ply.
         {
-          std::cout << "Setting ply to " << ply << " for up to " << white_to_move_parents.size() << " positions." << std::endl;
-          for (Board white_to_move_board : white_to_move_parents)
+          Dout(dc::notice, "BEGIN white_to_move_parents immutable");
+          int const number_of_parents = white_to_move_parents.size();
+          // Round the number of tasks down, so we never have less than min_number_of_parents_per_task parents per task
+          // (unless number_of_parents < min_number_of_parents_per_task).
+          int const number_of_tasks = std::clamp(number_of_parents / min_number_of_parents_per_task, 1, max_number_of_tasks);
+          // Round up, so that number_of_tasks tasks is sufficient to process all number_of_parents parents.
+          int const number_of_parents_per_task = (number_of_parents + number_of_tasks - 1) / number_of_tasks;
+          std::array<std::vector<Board>, max_number_of_tasks> task_black_to_move_parentss;
+          // Distribute parents across exactly number_of_tasks tasks.
+          // Each task gets either base or base+1 parents so the sum equals number_of_parents.
+          int const base = number_of_parents / number_of_tasks;
+          int const rem  = number_of_parents % number_of_tasks;
+          std::cout << "Setting ply to " << ply << " for up to " << number_of_parents << " positions using " << number_of_tasks << " tasks." << std::endl;
+          utils::threading::Gate until_all_tasks_finished;
+          std::atomic_int unfinished_tasks = number_of_tasks;
+          for (int task_n = 0; task_n < number_of_tasks; ++task_n)
           {
-            Info& white_to_move_info = graph.get_info<white>(white_to_move_board);
-            // All returned parents should be legal.
-            ASSERT(white_to_move_info.classification().is_legal());
-            ASSERT(white_to_move_info.classification().ply() == ply);
-            size_t s = black_to_move_parents.size();
-            white_to_move_info.white_to_move_set_minimum_ply_on_parents(white_to_move_board, graph, black_to_move_parents);
+            int const parent_start = task_n * base + std::min(task_n, rem);
+            int const parents_this_task = base + (task_n < rem ? 1 : 0);
+            int const parent_end = std::min(parent_start + parents_this_task, number_of_parents);
+            Dout(dc::notice, "PROCESSING task " << task_n << ": parent_start = " << parent_start << ", parent_end = " << parent_end);
+            ASSERT(parents_this_task > 0);
+            std::vector<Board>& task_black_to_move_parents = task_black_to_move_parentss[task_n];
+            auto task = [parent_start, parent_end, ply,
+                 &white_to_move_parents, &task_black_to_move_parents, &graph, &unfinished_tasks, &until_all_tasks_finished](){
+              for (int parent = parent_start; parent < parent_end; ++parent)
+              {
+                Dout(dc::notice, "PROCESSING parent " << parent);
+                Board white_to_move_board = white_to_move_parents[parent];
+                // Access a non-const Info unique for this thread.
+                Info& white_to_move_info = graph.get_info<white>(white_to_move_board);
+                // All returned parents should be legal.
+                ASSERT(white_to_move_info.classification().is_legal());
+                ASSERT(white_to_move_info.classification().ply() == ply);
+                white_to_move_info.white_to_move_set_minimum_ply_on_parents(white_to_move_board, graph, task_black_to_move_parents);
+              }
+              // If this was the last one, open the 'until_all_tasks_finished' gate.
+              if (unfinished_tasks-- == 1)
+                until_all_tasks_finished.open();
+              // We're done.
+              return false;
+            };
+            {
+              // Get read access to AIThreadPool::m_queues.
+              auto queues_access = thread_pool.queues_read_access();
+              // Get a reference to one of the queues in m_queues.
+              auto& queue = thread_pool.get_queue(queues_access, queue_handle);
+              bool queue_full;
+              {
+                // Get producer accesses to this queue.
+                auto queue_access = queue.producer_access();
+                int length = queue_access.length();
+                queue_full = length == queue.capacity();
+                // I thought the queue was large enough?!
+                ASSERT(!queue_full);
+                if (!queue_full)
+                {
+                  // Place a lambda in the queue.
+                  Dout(dc::notice, "Adding task " << task_n);
+                  queue_access.move_in(task);
+                }
+              } // Release producer accesses, so another thread can write to this queue again.
+              // This function must be called every time move_in was called
+              // on a queue that was returned by thread_pool.get_queue.
+              if (!queue_full) // Was move_in called?
+                queue.notify_one();
+            } // Release read access to AIThreadPool::m_queues so another thread can use AIThreadPool::new_queue again.
           }
+          Dout(dc::notice, "Waiting for all tasks to finish...");
+          until_all_tasks_finished.wait();
+          std::set<Board> black_to_move_parents_set;
+          for (int task_n = 0; task_n < number_of_tasks; ++task_n)
+          {
+            std::vector<Board> const& task_black_to_move_parents = task_black_to_move_parentss[task_n];
+            // Append task_black_to_move_parents to black_to_move_parents.
+            std::ranges::copy(task_black_to_move_parents, std::back_inserter(black_to_move_parents));
+            for (auto&& board : task_black_to_move_parents)
+            {
+              auto ibp = black_to_move_parents_set.insert(board);
+              ASSERT(ibp.second);
+            }
+          }
+          Dout(dc::notice, "END white_to_move_parents immutable");
         }
 
         if (!black_to_move_parents.empty())
@@ -239,15 +318,100 @@ int main()
         white_to_move_parents.clear();
         // Run over all positions that are mate in an even number of ply.
         {
-          std::cout << "Setting ply to " << ply << " for up to " << black_to_move_parents.size() << " positions." << std::endl;
-          for (Board black_to_move_board : black_to_move_parents)
+          int const number_of_parents = black_to_move_parents.size();
+          // Round the number of tasks down, so we never have less than min_number_of_parents_per_task parents per task
+          // (unless number_of_parents < min_number_of_parents_per_task).
+          int const number_of_tasks = std::clamp(number_of_parents / min_number_of_parents_per_task, 1, max_number_of_tasks);
+          // Round up, so that number_of_tasks tasks is sufficient to process all number_of_parents parents.
+          int const number_of_parents_per_task = (number_of_parents + number_of_tasks - 1) / number_of_tasks;
+          std::array<std::vector<Board>, max_number_of_tasks> task_white_to_move_parentss;
+          // Distribute parents across exactly number_of_tasks tasks.
+          // Each task gets either base or base+1 parents so the sum equals number_of_parents.
+          int const base = number_of_parents / number_of_tasks;
+          int const rem  = number_of_parents % number_of_tasks;
+          std::cout << "Setting ply to " << ply << " for up to " << number_of_parents << " positions using " << number_of_tasks << " tasks." << std::endl;
+          utils::threading::Gate until_all_tasks_finished;
+          std::atomic_int unfinished_tasks = number_of_tasks;
+          for (int task_n = 0; task_n < number_of_tasks; ++task_n)
           {
-            Info& black_to_move_info = graph.get_info<black>(black_to_move_board);
-            // All returned parents should be legal.
-            ASSERT(black_to_move_info.classification().is_legal());
-            ASSERT(black_to_move_info.classification().ply() == ply);
-            size_t s = white_to_move_parents.size();
-            black_to_move_info.black_to_move_set_maximum_ply_on_parents(black_to_move_board, graph, white_to_move_parents);
+            int const parent_start = task_n * base + std::min(task_n, rem);
+            int const parents_this_task = base + (task_n < rem ? 1 : 0);
+            int const parent_end = std::min(parent_start + parents_this_task, number_of_parents);
+            Dout(dc::notice, "PROCESSING task " << task_n << ": parent_start = " << parent_start << ", parent_end = " << parent_end);
+            ASSERT(parents_this_task > 0);
+            std::vector<Board>& task_white_to_move_parents = task_white_to_move_parentss[task_n];
+            auto task = [parent_start, parent_end, ply,
+                 &black_to_move_parents, &task_white_to_move_parents, &graph, &unfinished_tasks, &until_all_tasks_finished](){
+              for (int parent = parent_start; parent < parent_end; ++parent)
+              {
+                Board black_to_move_board = black_to_move_parents[parent];
+                // Access a non-const Info unique for this thread.
+                Info& black_to_move_info = graph.get_info<black>(black_to_move_board);
+                // All returned parents should be legal.
+                ASSERT(black_to_move_info.classification().is_legal());
+                ASSERT(black_to_move_info.classification().ply() == ply);
+                black_to_move_info.black_to_move_set_maximum_ply_on_parents(black_to_move_board, graph, task_white_to_move_parents);
+              }
+              // If this was the last one, open the 'until_all_tasks_finished' gate.
+              if (unfinished_tasks-- == 1)
+                until_all_tasks_finished.open();
+              // We're done.
+              return false;
+            };
+            {
+              // Get read access to AIThreadPool::m_queues.
+              auto queues_access = thread_pool.queues_read_access();
+              // Get a reference to one of the queues in m_queues.
+              auto& queue = thread_pool.get_queue(queues_access, queue_handle);
+              bool queue_full;
+              {
+                // Get producer accesses to this queue.
+                auto queue_access = queue.producer_access();
+                int length = queue_access.length();
+                queue_full = length == queue.capacity();
+                // I thought the queue was large enough?!
+                ASSERT(!queue_full);
+                if (!queue_full)
+                {
+                  // Place a lambda in the queue.
+                  queue_access.move_in(task);
+                }
+              } // Release producer accesses, so another thread can write to this queue again.
+              // This function must be called every time move_in was called
+              // on a queue that was returned by thread_pool.get_queue.
+              if (!queue_full) // Was move_in called?
+                queue.notify_one();
+            } // Release read access to AIThreadPool::m_queues so another thread can use AIThreadPool::new_queue again.
+          }
+          until_all_tasks_finished.wait();
+          std::set<Board> white_to_move_parents_set;
+          for (int task_n = 0; task_n < number_of_tasks; ++task_n)
+          {
+            std::vector<Board> const& task_white_to_move_parents = task_white_to_move_parentss[task_n];
+            // Append task_white_to_move_parents to white_to_move_parents.
+            std::ranges::copy(task_white_to_move_parents, std::back_inserter(white_to_move_parents));
+#ifdef CWDEBUG
+            for (auto&& board : task_white_to_move_parents)
+            {
+              auto ibp = white_to_move_parents_set.insert(board);
+              if (!ibp.second)
+              {
+                NAMESPACE_DEBUG::Mark m;
+                Dout(dc::notice, "task_n: " << task_n << "; the board " << board << " was already added!");
+                Dout(dc::notice, "number_of_tasks = " << number_of_tasks);
+                std::array<char, 12> buf;
+                for (int task_n2 = 0; task_n2 < number_of_tasks; ++task_n2)
+                {
+                  std::vector<Board> const& task_white_to_move_parents2 = task_white_to_move_parentss[task_n2];
+                  Dout(dc::notice, "parents from task " << task_n2 << ": ");
+                  NAMESPACE_DEBUG::Mark m2(utils::itoa(buf, task_n2));
+                  for (Board b : task_white_to_move_parents2)
+                    Dout(dc::notice, b);
+                }
+              }
+              ASSERT(ibp.second);
+            }
+#endif
           }
         }
 
@@ -264,7 +428,7 @@ int main()
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Execution time: " << (duration.count() / 1000000.0) << " seconds\n";
 
-    Graph const g(prefix_directory_bak, true);
+    Graph const g(prefix_directory_bak, true, true);
 
 #if CW_DEBUG
     std::cout << "Testing contents for black to move..." << std::endl;

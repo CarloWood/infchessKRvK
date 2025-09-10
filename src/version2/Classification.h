@@ -52,6 +52,7 @@ class Classification
   static constexpr encoded_type bits_mask = create_mask<encoded_type, number_of_bits>();
 
  private:
+  // mmap-ed data can not be atomic.
   encoded_type encoded_;                        // <mate_in_moves><bits>
 
  public:

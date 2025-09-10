@@ -4,6 +4,7 @@
 #include "debug.h"
 
 #if CW_DEBUG
+#include <algorithm>
 #include "Graph.h"
 #endif
 
