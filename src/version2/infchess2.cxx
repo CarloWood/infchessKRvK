@@ -17,7 +17,7 @@ int main()
   constexpr int max_number_of_tasks = 200;
   constexpr int min_number_of_parents_per_task = 100;
 
-  AIThreadPool thread_pool(2);
+  AIThreadPool thread_pool(32);
   AIQueueHandle queue_handle = thread_pool.new_queue(max_number_of_tasks + 1);
 
   Dout(dc::notice, "sizeof(Info) = " << sizeof(Info));
@@ -39,8 +39,8 @@ int main()
     // Construct the initial graph with all positions that are already mate.
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::filesystem::path const prefix_directory_bak = "/opt/ext4/infchessKRvK";
-    std::filesystem::path const prefix_directory = "/opt/btrfs/infchessKRvK";
+    std::filesystem::path const prefix_directory_bak = "/opt/ext4/nvme0/infchessKRvK";
+    std::filesystem::path const prefix_directory = "/opt/ext4/nvme2/infchessKRvK";
     std::filesystem::path const data_directory = Graph::data_directory(prefix_directory);
     std::filesystem::path const data_filename = Graph::data_filename(prefix_directory);
     bool const file_exists = std::filesystem::exists(data_filename);
