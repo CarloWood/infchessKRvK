@@ -74,19 +74,27 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
 void Info::white_to_move_set_minimum_ply_on_parents(
     Board const current_board, Graph& graph, std::vector<Board>& parents_out)
 {
+  DoutEntering(dc::notice, "Info::white_to_move_set_minimum_ply_on_parents(" << current_board << ", graph, parents_out)");
+
   // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_ply_` detemined.
   ASSERT(classification().ply() != Classification::unknown_ply);
   // No parent position can be mate in less than `mate_in_ply_ + 1` ply, because in the parent position
   // it is black to move and black would pick the move that leads to mate in the largest number of moves.
   int const min_ply = classification().ply() + 1;
+  // This number of ply plus one must fit in a ply_type.
+  ASSERT(min_ply < Classification::max_encoded_ply);
+  Dout(dc::notice, "min_ply = " << min_ply);
   // Generate all parent positions.
   Board::neighbors_type parents;
   int number_of_parents = current_board.generate_neighbors<Board::parents, black>(parents);
+  Dout(dc::notice, "number_of_parents = " << number_of_parents);
   // Run over all parent positions.
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
+    Dout(dc::notice, "  parent " << i << " = " << parent);
     Info& parent_info = graph.get_info<black>(parent);
+    Dout(dc::notice, "    with info: " << parent_info);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
 
@@ -111,15 +119,10 @@ void Info::white_to_move_set_minimum_ply_on_parents(
 #ifdef CWDEBUG
 void Info::print_on(std::ostream& os) const
 {
-  Classification classification_;               // The classification of this position.
-  // The following are only valid if this position is legal.
-  degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
-  degree_type number_of_visited_children_;      // The number of children that visited this parent, during generation of the graph.
-
   os << '{';
   os << "classification:" << classification_ <<
-      ", number_of_children:" << number_of_children_ <<
-      ", number_of_visited_children:" << number_of_visited_children_;
+      ", number_of_children:" << static_cast<uint32_t>(number_of_children_) <<
+      ", number_of_visited_children:" << static_cast<uint32_t>(number_of_visited_children_);
   os << '}';
 }
 #endif

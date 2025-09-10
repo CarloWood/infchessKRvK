@@ -29,7 +29,7 @@ class Info
   Classification classification_;               // The classification of this position.
   // The following are only valid if this position is legal.
   degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
-  degree_type number_of_visited_children_;      // The number of children that visited this parent, during generation of the graph.
+  std::atomic<degree_type> number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
 
  public:
   // Do nothing if this is the default constructor;
@@ -55,7 +55,7 @@ class Info
   Classification& classification() { return classification_; }
   Classification const& classification() const { return classification_; }
   degree_type number_of_children() const { return number_of_children_; }
-  degree_type number_of_visited_children() const { return number_of_visited_children_; }
+  degree_type number_of_visited_children() const { return number_of_visited_children_.load(std::memory_order_relaxed); }
 
   // Given that black is to move, set the mate_in_ply_ value on each of the parent positions.
   void black_to_move_set_maximum_ply_on_parents(Board const current_board, Graph& graph, std::vector<Board>& parents_out);
@@ -74,8 +74,8 @@ class Info
     // Call set_number_of_children first.
     ASSERT(number_of_children_ > 0);
     // This should be called exactly once for each child position.
-    ASSERT(number_of_visited_children_ < number_of_children_);
-    return ++number_of_visited_children_ == number_of_children_;
+    ASSERT(number_of_visited_children() < number_of_children_);
+    return number_of_visited_children_.fetch_add(1, std::memory_order_relaxed) == number_of_children_ - 1;
   }
 
  public:

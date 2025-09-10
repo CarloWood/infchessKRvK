@@ -73,11 +73,11 @@ void Classification::print_on(std::ostream& os) const
   if ((bits & legal))
     os << " (" << state_str(bits) << ")";
   os << ", mate_in_ply:";
-  ply_type const encoded_mate_in_ply = static_cast<ply_type>(encoded_ >> mate_in_ply_shift);
-  if (encoded_mate_in_ply == encoded_unknown_ply)
+  int current_ply = ply();
+  if (current_ply == unknown_ply)
     os << "<unknown>";
   else
-    os << static_cast<uint32_t>(encoded_mate_in_ply - 1);       // Subtract one to get the real number of ply.
+    os << current_ply;
   os << '}';
 }
 #endif
