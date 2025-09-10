@@ -52,14 +52,15 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
-    Info& parent_info = graph.get_info<white>(parent);
+    auto [parent_info, parent_non_mapped_info] = graph.get_info_tuple<white>(parent);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
     int parent_ply = parent_info.classification().ply();
     // If this parent didn't have its number of ply determined yet, it must be mate in `max_ply`, see above.
-    if (parent_ply == Classification::unknown_ply)
+    if (parent_ply == Classification::unknown_ply &&            // Mostly a speed up to short-circuit parents with a lower number of ply.
+        parent_info.classification().set_mate_in_ply(parent_non_mapped_info.winner(), max_ply))  // This fails if ply was already set.
     {
-      parent_info.classification().set_mate_in_ply(max_ply);
+      Dout(dc::notice, "Adding parent " << parent);
       parents_out.push_back(parent);
     }
     else
@@ -110,7 +111,10 @@ void Info::white_to_move_set_minimum_ply_on_parents(
     // Append the parent to parents_out if the parent is now known to be mate in `min_ply` moves because this was its last child.
     if (parent_non_mapped_info.increment_processed_children(parent_info.number_of_children()))  // Was this the last child?
     {
+      // This is single-threaded (only executed for the last child).
+      Dout(dc::notice, "Setting ply (" << min_ply << ") on " << parent);
       parent_info.classification().set_mate_in_ply(min_ply);
+      Dout(dc::notice, "Adding parent " << parent);
       parents_out.push_back(parent);
     }
   }

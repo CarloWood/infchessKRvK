@@ -101,9 +101,28 @@ class Classification
     ASSERT(!is_draw());
     // If it mate then `ply` must be zero.
     ASSERT(is_mate() == (ply == 0));
-    encoded_ &= ~mate_in_ply_mask;
+
     // Add +1 to the encoded ply because zero means "unknown".
-    encoded_ |= static_cast<encoded_type>(ply + 1) << mate_in_ply_shift;
+    encoded_ = (encoded_ & ~mate_in_ply_mask) | (static_cast<encoded_type>(ply + 1) << mate_in_ply_shift);
+  }
+
+  // Set in how many ply this position is mate.
+  [[nodiscard]] bool set_mate_in_ply(std::atomic<uint8_t>& winner, ply_type ply)
+  {
+    // The bits corresponding to mate_in_ply_mask are initially all zero (meaning "unknown"; aka encoded_unknown_ply).
+    // Those bits are changed once, by one thread, to something non-zero (iff the corresponding position is legal and not a is_draw),
+    // and never changed again.
+    // The bits are only changed by this function.
+    // There is a race condition between threads, where multiple threads can call this function concurrently.
+    // In that case it doesn't matter which thread makes the change, because it is guaranteed that all pass the same value for `ply`.
+    // However, only one of them is allowed to return true.
+
+    // Only the thread that increments `winner` first is allowed to return true (and make the change).
+    if (winner.fetch_add(1, std::memory_order_relaxed) != 0)
+      return false;
+
+    set_mate_in_ply(ply);
+    return true;
   }
 
   // Accessors.

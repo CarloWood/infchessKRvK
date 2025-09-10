@@ -79,19 +79,22 @@ class NonMappedInfo
 
  private:
   std::atomic<Info::degree_type> number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
+  std::atomic<uint8_t> winner_;                               // Set to 1 by the winning thread in case of a race condition on set_mate_in_ply.
 
  public:
   void initialize()
   {
     number_of_visited_children_ = 0;
+    winner_ = 0;
   }
 
   void reset_ply()
   {
-    number_of_visited_children_ = 0;
+    initialize();
   }
 
   Info::degree_type number_of_visited_children() const { return number_of_visited_children_.load(std::memory_order_relaxed); }
+  std::atomic<uint8_t>& winner() { return winner_; }
 
   // Returns true if this was the last child.
   bool increment_processed_children(Info::degree_type number_of_children)
