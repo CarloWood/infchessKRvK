@@ -71,21 +71,19 @@ class Info
 };
 
 // Data that one-on-one matches an Info, but is not memory-mapped.
-class NonMappedInfo
+class AuxiliaryInfo
 {
  public:
-  // The vector type used to store all NonMappedInfo objects (members of Graph).
-  using nodes_type = utils::Array<NonMappedInfo, PartitionElement::number_of_elements, InfoIndex>;
+  // The vector type used to store all AuxiliaryInfo objects (members of Graph).
+  using nodes_type = utils::Array<AuxiliaryInfo, PartitionElement::number_of_elements, InfoIndex>;
 
  private:
-  std::atomic<Info::degree_type> number_of_visited_children_; // The number of children that visited this parent, during generation of the graph.
-  std::atomic<uint8_t> winner_;                               // Set to 1 by the winning thread in case of a race condition on set_mate_in_ply.
+  Info::degree_type number_of_visited_children_;        // The number of children that visited this parent, during generation of the graph.
 
  public:
   void initialize()
   {
     number_of_visited_children_ = 0;
-    winner_ = 0;
   }
 
   void reset_ply()
@@ -93,17 +91,17 @@ class NonMappedInfo
     initialize();
   }
 
-  Info::degree_type number_of_visited_children() const { return number_of_visited_children_.load(std::memory_order_relaxed); }
-  std::atomic<uint8_t>& winner() { return winner_; }
-
   // Returns true if this was the last child.
-  bool increment_processed_children(Info::degree_type number_of_children)
+  bool increment_processed_children(std::mutex& m, Info::degree_type number_of_children)
   {
     // Call set_number_of_children first.
     ASSERT(number_of_children > 0);
+
+    std::lock_guard<std::mutex> const lock(m);
+
     // This should be called exactly once for each child position.
-    ASSERT(number_of_visited_children() < number_of_children);
-    return number_of_visited_children_.fetch_add(1, std::memory_order_relaxed) + 1 == number_of_children;
+    ASSERT(number_of_visited_children_ < number_of_children);
+    return ++number_of_visited_children_ == number_of_children;
   }
 
  public:

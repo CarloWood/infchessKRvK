@@ -52,13 +52,14 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
-    auto [parent_info, parent_non_mapped_info] = graph.get_info_tuple<white>(parent);
+    auto [parent_info, parent_auxiliary_info] = graph.get_info_tuple<white>(parent);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
     int parent_ply = parent_info.classification().ply();
+    std::mutex& m = graph.get_mutex(parent);
     // If this parent didn't have its number of ply determined yet, it must be mate in `max_ply`, see above.
     if (parent_ply == Classification::unknown_ply &&            // Mostly a speed up to short-circuit parents with a lower number of ply.
-        parent_info.classification().set_mate_in_ply(parent_non_mapped_info.winner(), max_ply))  // This fails if ply was already set.
+        parent_info.classification().set_mate_in_ply(m, max_ply))  // This fails if ply was already set.
     {
       Dout(dc::notice, "Adding parent " << parent);
       parents_out.push_back(parent);
@@ -94,7 +95,7 @@ void Info::white_to_move_set_minimum_ply_on_parents(
   {
     Board const& parent = parents[i];
     Dout(dc::notice, "  parent " << i << " = " << parent);
-    auto [parent_info, parent_non_mapped_info] = graph.get_info_tuple<black>(parent);
+    auto [parent_info, parent_auxiliary_info] = graph.get_info_tuple<black>(parent);
     Dout(dc::notice, "    with info: " << parent_info);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
@@ -109,7 +110,8 @@ void Info::white_to_move_set_minimum_ply_on_parents(
 
     // Inform parent that another child has its mate_in_ply_ set.
     // Append the parent to parents_out if the parent is now known to be mate in `min_ply` moves because this was its last child.
-    if (parent_non_mapped_info.increment_processed_children(parent_info.number_of_children()))  // Was this the last child?
+    std::mutex& m = graph.get_mutex(parent);
+    if (parent_auxiliary_info.increment_processed_children(m, parent_info.number_of_children()))  // Was this the last child?
     {
       // This is single-threaded (only executed for the last child).
       Dout(dc::notice, "Setting ply (" << min_ply << ") on " << parent);
@@ -129,7 +131,7 @@ void Info::print_on(std::ostream& os) const
   os << '}';
 }
 
-void NonMappedInfo::print_on(std::ostream& os) const
+void AuxiliaryInfo::print_on(std::ostream& os) const
 {
   os << '{';
   os << "number_of_visited_children:" << static_cast<uint32_t>(number_of_visited_children_);

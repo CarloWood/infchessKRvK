@@ -169,6 +169,9 @@ class Board
 
   std::string get_move(Board to_board) const;
 
+  // Acccessor (used by Graph to calculate a mutex index).
+  encoded_type get_encoded() const { return encoded_; }
+
   friend bool operator==(Board lhs, Board rhs) { return lhs.encoded_ == rhs.encoded_; }
   friend bool operator<(Board lhs, Board rhs) { return lhs.encoded_ < rhs.encoded_; }
 
