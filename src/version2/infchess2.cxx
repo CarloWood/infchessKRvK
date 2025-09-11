@@ -233,7 +233,8 @@ int main()
           // Each task gets either base or base+1 parents so the sum equals number_of_parents.
           int const base = number_of_parents / number_of_tasks;
           int const rem  = number_of_parents % number_of_tasks;
-          std::cout << "Setting ply to " << ply << " for up to " << number_of_parents << " positions using " << number_of_tasks << " tasks." << std::endl;
+          std::cout << "Setting ply to " << ply << "/" << static_cast<uint32_t>(Classification::max_ply_upperbound) <<
+            " for up to " << number_of_parents << " positions using " << number_of_tasks << " tasks." << std::endl;
           utils::threading::Gate until_all_tasks_finished;
           std::atomic_int unfinished_tasks = number_of_tasks;
           for (int task_n = 0; task_n < number_of_tasks; ++task_n)
@@ -291,17 +292,22 @@ int main()
           }
           Dout(dc::notice, "Waiting for all tasks to finish...");
           until_all_tasks_finished.wait();
+#ifdef CWDEBUG
           std::set<Board> black_to_move_parents_set;
+#endif
           for (int task_n = 0; task_n < number_of_tasks; ++task_n)
           {
             std::vector<Board> const& task_black_to_move_parents = task_black_to_move_parentss[task_n];
             // Append task_black_to_move_parents to black_to_move_parents.
             std::ranges::copy(task_black_to_move_parents, std::back_inserter(black_to_move_parents));
+#ifdef CWDEBUG
+            // Check that there are no duplicates.
             for (auto&& board : task_black_to_move_parents)
             {
               auto ibp = black_to_move_parents_set.insert(board);
               ASSERT(ibp.second);
             }
+#endif
           }
           Dout(dc::notice, "END white_to_move_parents immutable");
         }
@@ -329,7 +335,8 @@ int main()
           // Each task gets either base or base+1 parents so the sum equals number_of_parents.
           int const base = number_of_parents / number_of_tasks;
           int const rem  = number_of_parents % number_of_tasks;
-          std::cout << "Setting ply to " << ply << " for up to " << number_of_parents << " positions using " << number_of_tasks << " tasks." << std::endl;
+          std::cout << "Setting ply to " << ply << "/" << static_cast<uint32_t>(Classification::max_ply_upperbound) <<
+            " for up to " << number_of_parents << " positions using " << number_of_tasks << " tasks." << std::endl;
           utils::threading::Gate until_all_tasks_finished;
           std::atomic_int unfinished_tasks = number_of_tasks;
           for (int task_n = 0; task_n < number_of_tasks; ++task_n)
@@ -427,6 +434,7 @@ int main()
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Execution time: " << (duration.count() / 1000000.0) << " seconds\n";
+    std::cout << "Data written to " << data_filename << std::endl;
 
     Graph const g(prefix_directory_bak, true, true);
 
@@ -568,6 +576,6 @@ int main()
   }
   catch (AIAlert::Error const& error)
   {
-    Dout(dc::notice, "Fatal error: " << error);
+    std::cerr << "Fatal error: " << error << std::endl;
   }
 }
