@@ -57,6 +57,9 @@ class Info
 
   void set_number_of_children(degree_type number_of_children)
   {
+    //FIXME: remove this.
+    DoutEntering(dc::notice, "set_number_of_children(" << static_cast<uint32_t>(number_of_children) << ")");
+
     // Call this function only once.
     ASSERT(number_of_children_ == 0);
     number_of_children_ = number_of_children;

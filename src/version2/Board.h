@@ -229,29 +229,29 @@ class Board
 
     if constexpr (ft == bkbi)
     {
-      field_spec.mask = BlockIndex::mask << black_king_shift;
-      field_spec.limit = (y_coord ? BlockIndex::number_of_blocks - 1 : BlockIndex::Px) << black_king_shift;
-      field_spec.stride = (y_coord ? BlockIndex::stride_y : BlockIndex::stride_x) << black_king_shift;
+      field_spec.mask   = static_cast<encoded_type>(BlockIndex::mask)                                                  << black_king_shift;
+      field_spec.limit  = static_cast<encoded_type>(y_coord ? BlockIndex::number_of_blocks - 1 : BlockIndex::Px)       << black_king_shift;
+      field_spec.stride = static_cast<encoded_type>(y_coord ? BlockIndex::stride_y             : BlockIndex::stride_x) << black_king_shift;
     }
     else if constexpr (ft == bkbc)
     {
       constexpr int block_square_shift = KingSquare::block_square_shift + black_king_shift;
-      field_spec.mask   = (y_coord ? Size::block::mask_y   : Size::block::mask_x)   << block_square_shift;
-      field_spec.limit  = (y_coord ? Size::block::limit_y  : Size::block::limit_x)  << block_square_shift;
-      field_spec.stride = (y_coord ? Size::block::stride_y : Size::block::stride_x) << block_square_shift;
+      field_spec.mask   = static_cast<encoded_type>(y_coord ? Size::block::mask_y   : Size::block::mask_x)   << block_square_shift;
+      field_spec.limit  = static_cast<encoded_type>(y_coord ? Size::block::limit_y  : Size::block::limit_x)  << block_square_shift;
+      field_spec.stride = static_cast<encoded_type>(y_coord ? Size::block::stride_y : Size::block::stride_x) << block_square_shift;
     }
     else if (ft == wkbi)
     {
-      field_spec.mask = BlockIndex::mask << white_king_shift;
-      field_spec.limit = (y_coord ? BlockIndex::number_of_blocks - 1 : BlockIndex::Px) << white_king_shift;
-      field_spec.stride = (y_coord ? BlockIndex::stride_y : BlockIndex::stride_x) << white_king_shift;
+      field_spec.mask   = static_cast<encoded_type>(BlockIndex::mask)                                                  << white_king_shift;
+      field_spec.limit  = static_cast<encoded_type>(y_coord ? BlockIndex::number_of_blocks - 1 : BlockIndex::Px)       << white_king_shift;
+      field_spec.stride = static_cast<encoded_type>(y_coord ? BlockIndex::stride_y             : BlockIndex::stride_x) << white_king_shift;
     }
     else if constexpr (ft == wkbc)
     {
       constexpr int block_square_shift = KingSquare::block_square_shift + white_king_shift;
-      field_spec.mask   = (y_coord ? Size::block::mask_y   : Size::block::mask_x)   << block_square_shift;
-      field_spec.limit  = (y_coord ? Size::block::limit_y  : Size::block::limit_x)  << block_square_shift;
-      field_spec.stride = (y_coord ? Size::block::stride_y : Size::block::stride_x) << block_square_shift;
+      field_spec.mask   = static_cast<encoded_type>(y_coord ? Size::block::mask_y   : Size::block::mask_x)   << block_square_shift;
+      field_spec.limit  = static_cast<encoded_type>(y_coord ? Size::block::limit_y  : Size::block::limit_x)  << block_square_shift;
+      field_spec.stride = static_cast<encoded_type>(y_coord ? Size::block::stride_y : Size::block::stride_x) << block_square_shift;
     }
     else if constexpr (ft == wr)
     {
@@ -538,9 +538,8 @@ void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors) c
   uint64_t rook_blocked_squares;
   if constexpr (to_move == black && relation == children)
   {
-    // Calculate the difference between the coordinates of the king and the rook as: the rook minus the (black) king.
-    // We encode these deltas as 'delta + 1' stored in an unsigned int.
-    xy_encoded_delta = { static_cast<unsigned int>(wr[x] - bk[x] + 1), static_cast<unsigned int>(wr[y] - bk[y] + 1) };
+    // Note that xy_encoded_delta still contains the difference between the coordinates of the king and the rook as:
+    // the rook minus the (black) king, encoded as 'delta + 1'.
 
     // Calculate the squares that are blocked by the white rook.
     rook_blocked_squares =

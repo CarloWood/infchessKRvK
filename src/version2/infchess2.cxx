@@ -73,6 +73,9 @@ int main()
       // Generate all possible positions.
       graph.classify();
 
+      //FIXME: remove this.
+      return 0;
+
       Dout(dc::notice, "Number of partitions: white: " << graph.white_to_move_infos().size() <<
           ", black: " << graph.black_to_move_infos().size());
 
