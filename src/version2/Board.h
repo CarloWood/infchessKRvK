@@ -7,6 +7,7 @@
 #include "../Color.h"
 #include "utils/macros.h"
 #include "utils/is_between.h"
+#include "utils/to_string.h"
 #include "utils/VectorIndex.h"
 #include <cstdint>
 #include <functional>

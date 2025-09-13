@@ -8,6 +8,7 @@
 #include <string>
 #include <atomic>
 #include <mutex>
+#include <type_traits>
 #include "debug.h"
 
 #ifdef CWDEBUG
@@ -57,10 +58,8 @@ class Classification
   encoded_type encoded_;                        // <mate_in_moves><bits>
 
  public:
-  // Do nothing if this is the default constructor;
-  // in that case we make use of the fact that this is constructed with
-  // placement-new on a memory image that already contains initialized data.
-  Classification(bool initialize = false) { if (initialize) Classification::initialize(); }
+  // The default constructor should do nothing; this class is initialized by the fact
+  // that this is constructed with placement-new on a memory image that already contains initialized data.
 
   // Call this if the underlying memory was not already initialized.
   void initialize()
@@ -129,11 +128,14 @@ class Classification
   }
 
   // Accessors.
+  encoded_type bits() const { return (encoded_ & bits_mask); }
   bool is_mate() const { return (encoded_ & mate); }
   bool is_stalemate() const { return (encoded_ & stalemate); }
   bool is_draw() const { return (encoded_ & draw); }
   bool is_check() const { return (encoded_ & check); }
   bool is_legal() const { return (encoded_ & legal); }
+
+  encoded_type ply_encoded() const { return encoded_ >> mate_in_ply_shift; }
   // Subtract 1 again to undo the +1 in set_mate_in_ply.
   int ply() const { return (encoded_ >> mate_in_ply_shift) - 1; }
 
@@ -150,3 +152,6 @@ class Classification
   void print_on(std::ostream& os) const;
 #endif
 };
+
+// Make sure that we have a zero-cost default constructor (and destructor).
+static_assert(std::is_trivial<Classification>::value, "Classification must be a trivial type for zero-cost abstractions.");

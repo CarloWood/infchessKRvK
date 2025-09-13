@@ -39,8 +39,7 @@ int main()
     // Construct the initial graph with all positions that are already mate.
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::filesystem::path const prefix_directory_bak = "/opt/ext4/nvme0/infchessKRvK";
-    std::filesystem::path const prefix_directory = "/opt/ext4/nvme2/infchessKRvK";
+    std::filesystem::path const prefix_directory = "/opt/ext4/nvme1/infchessKRvK";
     std::filesystem::path const data_directory = Graph::data_directory(prefix_directory);
     std::filesystem::path const data_filename = Graph::data_filename(prefix_directory);
     bool const file_exists = std::filesystem::exists(data_filename);
@@ -436,54 +435,7 @@ int main()
     std::cout << "Execution time: " << (duration.count() / 1000000.0) << " seconds\n";
     std::cout << "Data written to " << data_filename << std::endl;
 
-    Graph const g(prefix_directory_bak, true, true);
-
-#if CW_DEBUG
-    std::cout << "Testing contents for black to move..." << std::endl;
-    auto const& black_to_move_infos = graph.black_to_move_infos();
-    for (Partition current_partition = black_to_move_infos.ibegin();
-        current_partition != black_to_move_infos.iend(); ++current_partition)
-    {
-      for (PartitionElement current_partition_element = black_to_move_infos[current_partition].ibegin();
-          current_partition_element != black_to_move_infos[current_partition].iend(); ++current_partition_element)
-      {
-        Info const& info1 = graph.get_info<black>(current_partition, current_partition_element);
-        Info const& info2 = g.get_info<black>(current_partition, current_partition_element);
-        ASSERT(info1.classification() == info2.classification());
-
-#if 0
-        Dout(dc::notice, "Board for partition " << static_cast<PartitionIndex>(current_partition) <<
-            " / element " << static_cast<InfoIndex>(current_partition_element) << " :");
-        Board current_board(current_partition, current_partition_element);
-        current_board.debug_utf8art(DEBUGCHANNELS::dc::notice);
-        Dout(dc::notice, "Mate in " << info2.classification().ply() << " ply.");
-#endif
-      }
-    }
-    std::cout << "Testing contents for white to move..." << std::endl;
-    auto const& white_to_move_infos = graph.white_to_move_infos();
-    for (Partition current_partition = white_to_move_infos.ibegin();
-        current_partition != white_to_move_infos.iend(); ++current_partition)
-    {
-      for (PartitionElement current_partition_element = white_to_move_infos[current_partition].ibegin();
-          current_partition_element != white_to_move_infos[current_partition].iend(); ++current_partition_element)
-      {
-        Info const& info1 = graph.get_info<white>(current_partition, current_partition_element);
-        Info const& info2 = g.get_info<white>(current_partition, current_partition_element);
-        ASSERT(info1.classification() == info2.classification());
-
-#if 0
-        Dout(dc::notice, "Board for partition " << static_cast<PartitionIndex>(current_partition) <<
-            " / element " << static_cast<InfoIndex>(current_partition_element) << " :");
-        Board current_board(current_partition, current_partition_element);
-        current_board.debug_utf8art(DEBUGCHANNELS::dc::notice);
-        Dout(dc::notice, "Mate in " << info2.classification().ply() << " ply.");
-#endif
-      }
-    }
-#endif
-
-    //Board::generate_neighbors_testsuite(graph);
+    return 0;
 
 #if 0
     Board board = initial_position;

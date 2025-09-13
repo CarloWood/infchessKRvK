@@ -16,4 +16,5 @@ add_executable(infchess2
 target_link_libraries(infchess2
   PRIVATE
     ${AICXX_OBJECTS_LIST}
+    enchantum::enchantum
 )

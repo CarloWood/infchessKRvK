@@ -31,10 +31,8 @@ class Info
   degree_type number_of_children_;              // The number of (legal) positions that can be reached from this position.
 
  public:
-  // Do nothing if this is the default constructor;
-  // in that case we make use of the fact that this is constructed with
-  // placement-new on a memory image that already contains initialized data.
-  Info(bool initialize = false) { if (initialize) Info::initialize(); }
+  // The default constructor should do nothing; this class is initialized by the fact
+  // that this is constructed with placement-new on a memory image that already contains initialized data.
 
   void initialize()
   {
@@ -109,3 +107,6 @@ class AuxiliaryInfo
   void print_on(std::ostream& os) const;
 #endif
 };
+
+// Make sure that we have a zero-cost default constructor (and destructor).
+static_assert(std::is_trivial<Info>::value, "Info must be a trivial type for zero-cost abstractions.");

@@ -18,16 +18,20 @@ class Graph
   static constexpr size_t number_of_mutexes = 131072;
   using infos_type = utils::Array<Info::nodes_type, number_of_partitions, PartitionIndex>;
   using auxiliary_infos_type = utils::Array<AuxiliaryInfo::nodes_type, number_of_partitions, PartitionIndex>;
+  using black_to_move_infos_type = std::unique_ptr<infos_type, std::function<void(infos_type*)>>;
+  using black_to_move_auxiliary_infos_type = std::unique_ptr<auxiliary_infos_type, std::function<void(auxiliary_infos_type*)>>;
+  using white_to_move_infos_type = std::unique_ptr<infos_type, std::function<void(infos_type*)>>;
+  using white_to_move_auxiliary_infos_type = std::unique_ptr<auxiliary_infos_type, std::function<void(auxiliary_infos_type*)>>;
 
  private:
   std::filesystem::path data_directory_;
   memory::MemoryMappedPool infos_pool_;
   memory::MemoryMappedPool auxiliary_infos_pool_;
   bool reuse_file_;
-  std::unique_ptr<infos_type, std::function<void(infos_type*)>> black_to_move_infos_;
-  std::unique_ptr<auxiliary_infos_type, std::function<void(auxiliary_infos_type*)>> black_to_move_auxiliary_infos_;
-  std::unique_ptr<infos_type, std::function<void(infos_type*)>> white_to_move_infos_;
-  std::unique_ptr<auxiliary_infos_type, std::function<void(auxiliary_infos_type*)>> white_to_move_auxiliary_infos_;
+  black_to_move_infos_type black_to_move_infos_;
+  black_to_move_auxiliary_infos_type black_to_move_auxiliary_infos_;
+  white_to_move_infos_type white_to_move_infos_;
+  white_to_move_auxiliary_infos_type white_to_move_auxiliary_infos_;
   std::vector<std::mutex> mutexes_;
 
   // The space allocated for an `infos_type` array.
@@ -44,30 +48,39 @@ class Graph
     return utils::nearest_multiple_of_power_of_two(sizeof(auxiliary_infos_type), memory_page_size);
   }
 
+  void do_allocate()
+  {
+    if (!reuse_file_)
+    {
+      void* black_to_move_infos_pool = infos_pool_.allocate();
+      ASSERT(black_to_move_infos_pool != nullptr && black_to_move_infos_pool == black_to_move_infos_start());
+      void* white_to_move_infos_pool = infos_pool_.allocate();
+      ASSERT(white_to_move_infos_pool != nullptr && white_to_move_infos_pool == white_to_move_infos_start());
+    }
+    void* black_to_move_auxiliary_infos_pool = auxiliary_infos_pool_.allocate();
+    ASSERT(black_to_move_auxiliary_infos_pool != nullptr && black_to_move_auxiliary_infos_pool == black_to_move_auxiliary_infos_start());
+    void* white_to_move_auxiliary_infos_pool = auxiliary_infos_pool_.allocate();
+    ASSERT(white_to_move_auxiliary_infos_pool != nullptr && white_to_move_auxiliary_infos_pool == white_to_move_auxiliary_infos_start());
+  }
+
   void* black_to_move_infos_start()
   {
-    if (reuse_file_)
-      return infos_pool_.mapped_base();
-    else
-      return infos_pool_.allocate();
+    return infos_pool_.mapped_base();
   }
 
   void* white_to_move_infos_start()
   {
-    if (reuse_file_)
-      return static_cast<char*>(infos_pool_.mapped_base()) + infos_size();
-    else
-      return infos_pool_.allocate();
+    return static_cast<char*>(infos_pool_.mapped_base()) + infos_size();
   }
 
   void* black_to_move_auxiliary_infos_start()
   {
-    return auxiliary_infos_pool_.allocate();
+    return auxiliary_infos_pool_.mapped_base();
   }
 
   void* white_to_move_auxiliary_infos_start()
   {
-    return auxiliary_infos_pool_.allocate();
+    return static_cast<char*>(auxiliary_infos_pool_.mapped_base()) + auxiliary_infos_size();
   }
 
  public:
@@ -78,16 +91,24 @@ class Graph
     auxiliary_infos_pool_(tmp_data_filename(prefix_directory), auxiliary_infos_size(), 2 * auxiliary_infos_size(),
         memory::MemoryMappedPool::Mode::persistent, true),
     reuse_file_(reuse_file),
-    black_to_move_infos_(new (black_to_move_infos_start()) infos_type, [this](infos_type* ptr){ }),
-    black_to_move_auxiliary_infos_(new (black_to_move_auxiliary_infos_start()) auxiliary_infos_type, [this](auxiliary_infos_type* ptr){ }),
-    white_to_move_infos_(new (white_to_move_infos_start()) infos_type, [this](infos_type* ptr){ }),
-    white_to_move_auxiliary_infos_(new (white_to_move_auxiliary_infos_start()) auxiliary_infos_type, [this](auxiliary_infos_type* ptr){ }),
     mutexes_(number_of_mutexes)
-    { }
+    {
+      do_allocate();
+      black_to_move_infos_ = black_to_move_infos_type(
+          new (black_to_move_infos_start()) infos_type, [this](infos_type* ptr){ });
+      black_to_move_auxiliary_infos_ = black_to_move_auxiliary_infos_type(
+          new (black_to_move_auxiliary_infos_start()) auxiliary_infos_type, [this](auxiliary_infos_type* ptr){ });
+      white_to_move_infos_ = white_to_move_infos_type(
+          new (white_to_move_infos_start()) infos_type, [this](infos_type* ptr){ });
+      white_to_move_auxiliary_infos_ = white_to_move_auxiliary_infos_type(
+          new (white_to_move_auxiliary_infos_start()) auxiliary_infos_type, [this](auxiliary_infos_type* ptr){ });
+    }
 
   ~Graph()
   {
+    DoutEntering(dc::notice, "Graph::~Graph()");
     std::filesystem::path tmp_data = data_directory_ / "tmp_data.img";
+    Dout(dc::notice, "Removing " << tmp_data);
     std::filesystem::remove(tmp_data);
   }
 

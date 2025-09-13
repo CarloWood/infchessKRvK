@@ -17,6 +17,11 @@
 [submodule "threadpool"]
 	path = threadpool
 	url = https://github.com/CarloWood/threadpool.git
+	branch = master
 [submodule "threadsafe"]
 	path = threadsafe
 	url = https://github.com/CarloWood/threadsafe.git
+	branch = master
+[submodule "enchantum"]
+	path = enchantum
+	url = https://github.com/ZXShady/enchantum.git

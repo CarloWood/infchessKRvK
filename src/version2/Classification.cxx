@@ -70,8 +70,7 @@ void Classification::print_on(std::ostream& os) const
   os << '{';
   auto const bits = encoded_ & bits_mask;
   os << "bits:" << static_cast<uint32_t>(bits);
-  if ((bits & legal))
-    os << " (" << state_str(bits) << ")";
+  os << " (" << state_str(bits) << ")";
   os << ", mate_in_ply:";
   int current_ply = ply();
   if (current_ply == unknown_ply)
