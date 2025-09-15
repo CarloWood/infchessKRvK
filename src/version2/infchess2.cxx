@@ -73,9 +73,6 @@ int main()
       // Generate all possible positions.
       graph.classify();
 
-      //FIXME: remove this.
-      return 0;
-
       Dout(dc::notice, "Number of partitions: white: " << graph.white_to_move_infos().size() <<
           ", black: " << graph.black_to_move_infos().size());
 
@@ -244,14 +241,14 @@ int main()
             int const parent_start = task_n * base + std::min(task_n, rem);
             int const parents_this_task = base + (task_n < rem ? 1 : 0);
             int const parent_end = std::min(parent_start + parents_this_task, number_of_parents);
-            Dout(dc::notice, "PROCESSING task " << task_n << ": parent_start = " << parent_start << ", parent_end = " << parent_end);
+            //Dout(dc::notice, "PROCESSING task " << task_n << ": parent_start = " << parent_start << ", parent_end = " << parent_end);
             ASSERT(parents_this_task > 0);
             std::vector<Board>& task_black_to_move_parents = task_black_to_move_parentss[task_n];
             auto task = [parent_start, parent_end, ply,
                  &white_to_move_parents, &task_black_to_move_parents, &graph, &unfinished_tasks, &until_all_tasks_finished](){
               for (int parent = parent_start; parent < parent_end; ++parent)
               {
-                Dout(dc::notice, "PROCESSING parent " << parent);
+                //Dout(dc::notice, "PROCESSING parent " << parent);
                 Board white_to_move_board = white_to_move_parents[parent];
                 // Access a non-const Info unique for this thread.
                 Info& white_to_move_info = graph.get_info<white>(white_to_move_board);
@@ -282,7 +279,7 @@ int main()
                 if (!queue_full)
                 {
                   // Place a lambda in the queue.
-                  Dout(dc::notice, "Adding task " << task_n);
+                  //Dout(dc::notice, "Adding task " << task_n);
                   queue_access.move_in(task);
                 }
               } // Release producer accesses, so another thread can write to this queue again.

@@ -410,6 +410,8 @@ inline std::tuple<Square, Square, Square> Board::abbreviations() const
 template<Board::Relation relation, color_type to_move>
 void Board::generate_king_moves(neighbors_type& neighbors_out, int& neighbors) const
 {
+  //DoutEntering(dc::notice, "Board::generate_king_moves<" << utils::to_string(relation) << ", " << utils::to_string(to_move) <<
+  //    ">(neighbors_out, " << neighbors << ")");
   using namespace coordinates;
 
   // Get the coordinates of all pieces.

@@ -6,7 +6,7 @@
 
 void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, Graph& graph, std::vector<Board>& parents_out)
 {
-  DoutEntering(dc::notice, "Info::black_to_move_set_maximum_ply_on_parents(" << current_board << ", graph, parents_out)");
+  //DoutEntering(dc::notice, "Info::black_to_move_set_maximum_ply_on_parents(" << current_board << ", graph, parents_out)");
 
   // Only call black_to_move_set_maximum_ply_on_parents on a position that already has its `mate_in_ply_` determined.
   ASSERT(classification().ply() != Classification::unknown_ply);
@@ -19,35 +19,6 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
   // Generate all parent positions.
   Board::neighbors_type parents;
   int number_of_parents = current_board.generate_neighbors<Board::parents, white>(parents);
-#ifdef CWDEBUG
-  bool oops = false;
-  for (int i = 0; i < number_of_parents; ++i)
-  {
-    Board const& parent = parents[i];
-    Info const& parent_info = graph.get_info<white>(parent);
-    if (!parent_info.classification().is_legal())
-    {
-      oops = true;
-      break;
-    }
-  }
-  if (oops)
-  {
-    std::cout << "Called generate_neighbors<Board::parents, white> on:\n";
-    current_board.utf8art(std::cout, black);
-    std::cout << "Returned number of parents: " << number_of_parents << std::endl;
-    for (int i = 0; i < number_of_parents; ++i)
-    {
-      Board const& parent = parents[i];
-      Info const& parent_info = graph.get_info<white>(parent);
-      if (!parent_info.classification().is_legal())
-        std::cout << "ILLEGAL Parent " << i << ":\n";
-      else
-        std::cout << "Parent " << i << ":\n";
-      parent.utf8art(std::cout, white);
-    }
-  }
-#endif
   // Run over all parent positions.
   for (int i = 0; i < number_of_parents; ++i)
   {
@@ -61,7 +32,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
     if (parent_ply == Classification::unknown_ply &&            // Mostly a speed up to short-circuit parents with a lower number of ply.
         parent_info.classification().set_mate_in_ply(m, max_ply))  // This fails if ply was already set.
     {
-      Dout(dc::notice, "Adding parent " << parent);
+      //Dout(dc::notice, "Adding parent " << parent);
       parents_out.push_back(parent);
     }
     else
@@ -76,7 +47,7 @@ void Info::black_to_move_set_maximum_ply_on_parents(Board const current_board, G
 void Info::white_to_move_set_minimum_ply_on_parents(
     Board const current_board, Graph& graph, std::vector<Board>& parents_out)
 {
-  DoutEntering(dc::notice, "Info::white_to_move_set_minimum_ply_on_parents(" << current_board << ", graph, parents_out)");
+  //DoutEntering(dc::notice, "Info::white_to_move_set_minimum_ply_on_parents(" << current_board << ", graph, parents_out)");
 
   // Only call set_minimum_ply_on_parents on a position that already has its `mate_in_ply_` detemined.
   ASSERT(classification().ply() != Classification::unknown_ply);
@@ -85,18 +56,18 @@ void Info::white_to_move_set_minimum_ply_on_parents(
   int const min_ply = classification().ply() + 1;
   // This number of ply plus one must fit in a ply_type.
   ASSERT(min_ply < Classification::max_encoded_ply);
-  Dout(dc::notice, "min_ply = " << min_ply);
+  //Dout(dc::notice, "min_ply = " << min_ply);
   // Generate all parent positions.
   Board::neighbors_type parents;
   int number_of_parents = current_board.generate_neighbors<Board::parents, black>(parents);
-  Dout(dc::notice, "number_of_parents = " << number_of_parents);
+  //Dout(dc::notice, "number_of_parents = " << number_of_parents);
   // Run over all parent positions.
   for (int i = 0; i < number_of_parents; ++i)
   {
     Board const& parent = parents[i];
-    Dout(dc::notice, "  parent " << i << " = " << parent);
+    //Dout(dc::notice, "  parent " << i << " = " << parent);
     auto [parent_info, parent_auxiliary_info] = graph.get_info_tuple<black>(parent);
-    Dout(dc::notice, "    with info: " << parent_info);
+    //Dout(dc::notice, "    with info: " << parent_info);
     // All returned parent positions should be legal.
     ASSERT(parent_info.classification().is_legal());
 
@@ -114,9 +85,9 @@ void Info::white_to_move_set_minimum_ply_on_parents(
     if (parent_auxiliary_info.increment_processed_children(m, parent_info.number_of_children()))  // Was this the last child?
     {
       // This is single-threaded (only executed for the last child).
-      Dout(dc::notice, "Setting ply (" << min_ply << ") on " << parent);
+      //Dout(dc::notice, "Setting ply (" << min_ply << ") on " << parent);
       parent_info.classification().set_mate_in_ply(min_ply);
-      Dout(dc::notice, "Adding parent " << parent);
+      //Dout(dc::notice, "Adding parent " << parent);
       parents_out.push_back(parent);
     }
   }

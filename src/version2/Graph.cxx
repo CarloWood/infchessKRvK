@@ -24,26 +24,12 @@ void Graph::classify()
             {
               for (int color = 0; color < 2; ++color)
               {
-                //FIXME: remove this.
-                // We test one specific case only.
-                bk_x = 0;
-                bk_y = 0;
-                wk_x = 0;
-                wk_y = 2;
-                wr_x = 0;
-                wr_y = 1;
-                color = 0;
-
                 BlackKingSquare const black_king{bk_x, bk_y};
                 WhiteKingSquare const white_king{wk_x, wk_y};
                 WhiteRookSquare const white_rook{wr_x, wr_y};
                 Color const to_move(static_cast<color_type>(color));
 
                 Board const pos(black_king, white_king, white_rook);
-
-                //FIXME: remove this.
-                Dout(dc::notice, "Board under test:");
-                pos.debug_utf8art(DEBUGCHANNELS::dc::notice);
 
                 if (pos.determine_legal(to_move))
                 {
@@ -60,10 +46,6 @@ void Graph::classify()
                       info.set_number_of_children(pos.generate_neighbors<Board::children, white>(neighbors));
                   }
                 }
-
-                //FIXME: remove this.
-                // We are only testing a single board.
-                return;
               }
             }
           }
