@@ -35,14 +35,19 @@ ChessWindow::~ChessWindow()
   DoutEntering(dc::notice, "ChessWindow::~ChessWindow() [" << (void*)this << "]");
 }
 
-void ChessWindow::on_actionQuit_triggered()
+void ChessWindow::on_actionQuit_triggered_virt()
 {
-  DoutEntering(dc::notice, "ChessWindow::on_actionQuit_triggered()");
+  DoutEntering(dc::notice, "ChessWindow::on_actionQuit_triggered_virt()");
 }
 
-void ChessWindow::on_actionEdit_mode_triggered()
+void ChessWindow::on_actionEdit_mode_triggered_virt()
 {
-  DoutEntering(dc::notice, "ChessWindow::on_actionEdit_mode_triggered()");
+  DoutEntering(dc::notice, "ChessWindow::on_actionEdit_mode_triggered_virt()");
+}
+
+void ChessWindow::on_actionSelect_All_triggered_virt()
+{
+  DoutEntering(dc::notice, "ChessWindow::on_actionSelect_All_triggered_virt()");
 }
 
 } // namespace GUI

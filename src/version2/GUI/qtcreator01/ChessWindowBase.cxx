@@ -15,4 +15,20 @@ ChessWindowBase::~ChessWindowBase()
   delete ui_;
 }
 
+void ChessWindowBase::on_actionQuit_triggered()
+{
+  on_actionQuit_triggered_virt();
+}
+
+void ChessWindowBase::on_actionEdit_mode_triggered()
+{
+  on_actionEdit_mode_triggered_virt();
+}
+
+void ChessWindowBase::on_actionSelect_All_triggered()
+{
+  on_actionSelect_All_triggered_virt();
+}
+
+
 } // namespace GUI

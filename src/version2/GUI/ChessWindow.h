@@ -11,8 +11,9 @@ class ChessWindow : public ChessWindowBase
   ~ChessWindow();
 
  private slots:
-  void on_actionQuit_triggered() override;
-  void on_actionEdit_mode_triggered() override;
+  void on_actionQuit_triggered_virt() override;
+  void on_actionEdit_mode_triggered_virt() override;
+  void on_actionSelect_All_triggered_virt() override;
 };
 
 } // namespace GUI
