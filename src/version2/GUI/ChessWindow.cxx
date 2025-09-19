@@ -11,9 +11,8 @@ ChessWindow::ChessWindow()
 {
   DoutEntering(dc::notice, "ChessWindow::ChessWindow() [" << (void*)this << "]");
 
-  // Set an icon on the Quit action.
-  QIcon quitIcon = QIcon::fromTheme("application-exit");
-  if (quitIcon.isNull())
+  // Warn if Themes do not seem to work.
+  if (QIcon::fromTheme("application-exit").isNull())
   {
     char const* const QT_QPA_PLATFORMTHEME = getenv("QT_QPA_PLATFORMTHEME");
     std::string status = "currently not set";
@@ -22,9 +21,7 @@ ChessWindow::ChessWindow()
     std::cerr << "Warning: the current theme (\"" << QIcon::themeName().toUtf8().constData() << "\") does not support the freedesktop Icon "
       "Naming Specification. Perhaps you need to set a correct value of the QT_QPA_PLATFORMTHEME environment variable (" << status << ")." <<
       std::endl;
-    quitIcon = qApp->style()->standardIcon(QStyle::SP_DialogCloseButton);
   }
-  ui_->actionQuit->setIcon(quitIcon);
 
   // Make graphicsView fill as much of the main window as possible.
   setCentralWidget(ui_->graphicsView);
@@ -38,6 +35,9 @@ ChessWindow::~ChessWindow()
 void ChessWindow::on_actionQuit_triggered_virt()
 {
   DoutEntering(dc::notice, "ChessWindow::on_actionQuit_triggered_virt()");
+
+  // Terminate the application cleanly.
+  QApplication::quit();
 }
 
 void ChessWindow::on_actionEdit_mode_triggered_virt()
