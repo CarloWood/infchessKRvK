@@ -1,7 +1,6 @@
 #pragma once
 
-#include "ChessIconFactory.h"
-#include <gtkmm.h>
+//#include "ChessIconFactory.h"
 #include <array>
 #include <map>
 #include <any>
@@ -21,6 +20,7 @@ enum TopEntries
 
 } // namespace menu_keys
 
+#if 0 // FIXME: port this to gtkmm-4
 class ChessMenuBar : /*public Gtk::MenuBar,*/ public ChessIconFactory
 {
   using TopEntries = menu_keys::TopEntries;
@@ -151,5 +151,6 @@ class ChessMenuBar : /*public Gtk::MenuBar,*/ public ChessIconFactory
  private:
   static char const* top_entry_label(TopEntries top_entry);
 };
+#endif
 
 } // namespace GUI

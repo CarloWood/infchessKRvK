@@ -2,16 +2,13 @@
 #include "Graph.h"
 #include "utils/AIAlert.h"
 #include "utils/debug_ostream_operators.h"
+#include "GUI/ChessApplication.h"
 #include "GUI/ChessWindow.h"
-#include <gtkmm.h>
 
 int main(int argc, char* argv[])
 {
   Debug(NAMESPACE_DEBUG::init());
-
-  // Create GTK+ application object.
-  auto app = Gtk::Application::create("com.github.CarloWood.infchessKRvK");
-  return app->make_window_and_run<GUI::ChessWindow>(argc, argv);
+  Dout(dc::notice, "Entering main() ");
 
   // Get the size of the board.
   int const board_size_x = Size::board::x;
@@ -23,6 +20,21 @@ int main(int argc, char* argv[])
   int const block_size_y = Size::block::y;
   Dout(dc::notice, "Block size: " << block_size_x << "x" << block_size_y);
 
+  // Create the QApplication object.
+  GUI::ChessApplication application(argc, argv);
+
+  // Create and show the QMainWindow object.
+  GUI::ChessWindow main_window;
+  main_window.show();
+
+  // Run application.
+  int exit_status = application.exec();
+
+  // The window was closed.
+  Dout(dc::notice, "Leaving main() with exit status " << exit_status);
+  return exit_status;
+
+#if 0
   try
   {
     std::filesystem::path const prefix_directory = "/opt/ext4/nvme1/infchessKRvK";
@@ -42,5 +54,5 @@ int main(int argc, char* argv[])
   {
     std::cerr << "Fatal error: " << error << std::endl;
   }
+#endif
 }
-

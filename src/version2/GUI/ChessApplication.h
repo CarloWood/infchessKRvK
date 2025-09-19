@@ -1,36 +1,26 @@
 #pragma once
 
-#include <gtkmm.h>
+#include <QApplication>
 
 namespace GUI {
 
-class ChessWindow;
-class ChessMenuBar;
+class ChessApplication;
 
-class ChessApplication : public Gtk::Application
+class PreAppInit
 {
- private:
-  ChessWindow* main_window_;
+  friend class ChessApplication;
+  PreAppInit();
+};
 
- protected:
-  ChessApplication();
-  ~ChessApplication() override;
-
+class ChessApplication : private PreAppInit, public QApplication
+{
  public:
-  static Glib::RefPtr<ChessApplication> create();
+  // Inherit all constructors.
+  using QApplication::QApplication;
 
-  void append_menu_entries(ChessMenuBar* menubar);
-
- protected:
-  void on_startup() override;
-  void on_activate() override;
-
- private:
-  ChessWindow* create_window();
-
-  void on_menu_File_QUIT();
-
-  void on_window_hide(Gtk::Window* window);
+  // Override just the constructor that I am interested in.
+//  ChessApplication(int& argc, char** argv);
+  ~ChessApplication() override;
 };
 
 } // namespace GUI

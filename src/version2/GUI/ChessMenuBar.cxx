@@ -3,6 +3,7 @@
 #include "ChessWindow.h"
 #include "ChessApplication.h"
 
+#if 0 //FIXME: port this to gtkmm-4
 namespace GUI {
 
 using namespace menu_keys;
@@ -36,3 +37,4 @@ ChessMenuBar::ChessMenuBar(ChessWindow* main_window)
 }
 
 } // namespace GUI
+#endif

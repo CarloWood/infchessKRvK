@@ -1,7 +1,8 @@
 #include "sys.h"
-#include "ChessIconFactory.h"
+//#include "ChessIconFactory.h"
 #include "debug.h"
 
+#if 0 // FIXME: make this work again
 namespace GUI {
 
 //static
@@ -75,3 +76,4 @@ ChessIconFactory::ChessIconFactory()
 }
 
 } // namespace GUI
+#endif

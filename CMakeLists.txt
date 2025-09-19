@@ -1,5 +1,5 @@
-# FetchContent was added to 3.14.
-cmake_minimum_required(VERSION 3.14...4.0.2)
+# FetchContent was added to 3.14. Qt requires 3.16.
+cmake_minimum_required(VERSION 3.16...4.1.1)
 
 # Compile all subdirectories with the same standard.
 set(CMAKE_CXX_STANDARD 20)
@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(infchessKRvK
+  VERSION 0.1
   LANGUAGES C CXX
   DESCRIPTION "Analyse K+R vs K on a quarter-infinity chess board."
 )
@@ -40,8 +41,8 @@ endif ()
 # CONFIG FILES
 
 # Tell cwds/sys.h that we have a config.h.
-#add_definitions(-DHAVE_CONFIG_H)
-#include_directories(${top_objdir})
+add_definitions(-DHAVE_CONFIG_H)
+
 # End of CONFIG FILES section.
 
 #==============================================================================
@@ -50,6 +51,12 @@ endif ()
 include(AICxxSubmodules)
 
 #==============================================================================
+
+# Generate the config.h file with project information.
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/config.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/config.h"
+)
 
 add_subdirectory(src)
 
